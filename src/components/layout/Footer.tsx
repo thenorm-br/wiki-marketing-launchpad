@@ -69,7 +69,7 @@ export const Footer = () => {
               </div>
               <div className="flex items-center gap-3 text-muted-foreground">
                 <MapPin className="w-5 h-5 text-primary" />
-                <span>São Paulo, SP - Brasil</span>
+                <span>Aracruz - ES, Brasil</span>
               </div>
             </div>
 
