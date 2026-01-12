@@ -77,6 +77,7 @@ const Contacts = () => {
   const [selectedActions, setSelectedActions] = useState<string[]>([]);
   const [isDragging, setIsDragging] = useState(false);
   const [uploadedFileName, setUploadedFileName] = useState<string | null>(null);
+  const [isProcessing, setIsProcessing] = useState(false);
 
   const handleFileUpload = (file: File) => {
     if (!file) return;
@@ -144,13 +145,51 @@ const Contacts = () => {
   const handleExecuteActions = () => {
     const selectedContacts = contacts.filter((c) => c.selected);
     console.log("Executando ações:", selectedActions, "para contatos:", selectedContacts);
-    // Aqui conectaria com o backend para executar as ações
-    alert(`Ações ${selectedActions.join(", ")} serão executadas para ${selectedContactsCount} contatos!`);
+    setIsProcessing(true);
   };
 
   const handleLogout = () => {
     navigate("/");
   };
+
+  // Processing Modal
+  if (isProcessing) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <motion.div
+          initial={{ opacity: 0, scale: 0.9 }}
+          animate={{ opacity: 1, scale: 1 }}
+          className="bg-card/80 backdrop-blur-xl border border-border/50 rounded-3xl p-12 text-center max-w-lg mx-4"
+        >
+          <div className="w-20 h-20 rounded-full bg-primary/20 flex items-center justify-center mx-auto mb-6">
+            <motion.div
+              animate={{ rotate: 360 }}
+              transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
+            >
+              <Send className="w-10 h-10 text-primary" />
+            </motion.div>
+          </div>
+          <h2 className="text-2xl font-display font-bold text-foreground mb-4">
+            SUA SOLICITAÇÃO ESTÁ SENDO PROCESSADA
+          </h2>
+          <p className="text-muted-foreground text-lg mb-8">
+            ENVIAREMOS O RELATÓRIO POR EMAIL
+          </p>
+          <Button
+            variant="outline"
+            onClick={() => {
+              setIsProcessing(false);
+              setContacts([]);
+              setSelectedActions([]);
+              setUploadedFileName(null);
+            }}
+          >
+            Fazer Nova Solicitação
+          </Button>
+        </motion.div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background">
