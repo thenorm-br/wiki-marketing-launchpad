@@ -2,6 +2,7 @@ import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Menu, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Link } from "react-router-dom";
 
 const navLinks = [
   { label: "Soluções", href: "#solucoes" },
@@ -42,9 +43,11 @@ export const Header = () => {
 
           {/* Desktop CTA */}
           <div className="hidden lg:flex items-center gap-4">
-            <Button variant="ghost" size="sm">
-              Login
-            </Button>
+            <Link to="/login">
+              <Button variant="ghost" size="sm">
+                Login
+              </Button>
+            </Link>
             <Button variant="hero" size="default">
               Começar agora
             </Button>
@@ -82,9 +85,11 @@ export const Header = () => {
                 </a>
               ))}
               <div className="flex flex-col gap-3 pt-4 border-t border-border">
-                <Button variant="outline" className="w-full">
-                  Login
-                </Button>
+                <Link to="/login" onClick={() => setIsMenuOpen(false)}>
+                  <Button variant="outline" className="w-full">
+                    Login
+                  </Button>
+                </Link>
                 <Button variant="hero" className="w-full">
                   Começar agora
                 </Button>
