@@ -67,7 +67,6 @@ const Login = () => {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   className="pl-10 bg-background/50 border-border/50 focus:border-primary"
-                  required
                 />
               </div>
             </div>
@@ -85,7 +84,6 @@ const Login = () => {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   className="pl-10 pr-10 bg-background/50 border-border/50 focus:border-primary"
-                  required
                 />
                 <button
                   type="button"
