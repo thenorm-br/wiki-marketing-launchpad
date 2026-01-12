@@ -1,0 +1,392 @@
+import { useState, useRef } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Label } from "@/components/ui/label";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import {
+  Upload,
+  FileSpreadsheet,
+  Trash2,
+  MessageCircle,
+  Mail,
+  Phone,
+  Send,
+  CheckCircle2,
+  X,
+  Download,
+  Users,
+  LogOut,
+} from "lucide-react";
+import { useNavigate } from "react-router-dom";
+
+interface Contact {
+  id: string;
+  name: string;
+  phone: string;
+  email: string;
+  selected: boolean;
+}
+
+interface Action {
+  id: string;
+  label: string;
+  icon: React.ReactNode;
+  color: string;
+}
+
+const availableActions: Action[] = [
+  {
+    id: "whatsapp",
+    label: "Enviar WhatsApp",
+    icon: <MessageCircle className="w-4 h-4" />,
+    color: "bg-green-500/20 text-green-400 border-green-500/30",
+  },
+  {
+    id: "email",
+    label: "Enviar E-mail",
+    icon: <Mail className="w-4 h-4" />,
+    color: "bg-blue-500/20 text-blue-400 border-blue-500/30",
+  },
+  {
+    id: "call",
+    label: "Ligar",
+    icon: <Phone className="w-4 h-4" />,
+    color: "bg-purple-500/20 text-purple-400 border-purple-500/30",
+  },
+  {
+    id: "sms",
+    label: "Enviar SMS",
+    icon: <Send className="w-4 h-4" />,
+    color: "bg-orange-500/20 text-orange-400 border-orange-500/30",
+  },
+];
+
+const Contacts = () => {
+  const navigate = useNavigate();
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [contacts, setContacts] = useState<Contact[]>([]);
+  const [selectedActions, setSelectedActions] = useState<string[]>([]);
+  const [isDragging, setIsDragging] = useState(false);
+  const [uploadedFileName, setUploadedFileName] = useState<string | null>(null);
+
+  const handleFileUpload = (file: File) => {
+    if (!file) return;
+
+    setUploadedFileName(file.name);
+
+    // Simula parsing de CSV/Excel
+    const mockContacts: Contact[] = [
+      { id: "1", name: "João Silva", phone: "(27) 99999-1111", email: "joao@email.com", selected: false },
+      { id: "2", name: "Maria Santos", phone: "(27) 99999-2222", email: "maria@email.com", selected: false },
+      { id: "3", name: "Pedro Oliveira", phone: "(27) 99999-3333", email: "pedro@email.com", selected: false },
+      { id: "4", name: "Ana Costa", phone: "(27) 99999-4444", email: "ana@email.com", selected: false },
+      { id: "5", name: "Carlos Lima", phone: "(27) 99999-5555", email: "carlos@email.com", selected: false },
+      { id: "6", name: "Fernanda Alves", phone: "(27) 99999-6666", email: "fernanda@email.com", selected: false },
+      { id: "7", name: "Ricardo Souza", phone: "(27) 99999-7777", email: "ricardo@email.com", selected: false },
+      { id: "8", name: "Juliana Mendes", phone: "(27) 99999-8888", email: "juliana@email.com", selected: false },
+    ];
+    
+    setContacts(mockContacts);
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
+    const file = e.dataTransfer.files[0];
+    handleFileUpload(file);
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = () => {
+    setIsDragging(false);
+  };
+
+  const toggleContact = (id: string) => {
+    setContacts(
+      contacts.map((c) =>
+        c.id === id ? { ...c, selected: !c.selected } : c
+      )
+    );
+  };
+
+  const toggleAllContacts = () => {
+    const allSelected = contacts.every((c) => c.selected);
+    setContacts(contacts.map((c) => ({ ...c, selected: !allSelected })));
+  };
+
+  const toggleAction = (actionId: string) => {
+    setSelectedActions((prev) =>
+      prev.includes(actionId)
+        ? prev.filter((a) => a !== actionId)
+        : [...prev, actionId]
+    );
+  };
+
+  const deleteContact = (id: string) => {
+    setContacts(contacts.filter((c) => c.id !== id));
+  };
+
+  const selectedContactsCount = contacts.filter((c) => c.selected).length;
+
+  const handleExecuteActions = () => {
+    const selectedContacts = contacts.filter((c) => c.selected);
+    console.log("Executando ações:", selectedActions, "para contatos:", selectedContacts);
+    // Aqui conectaria com o backend para executar as ações
+    alert(`Ações ${selectedActions.join(", ")} serão executadas para ${selectedContactsCount} contatos!`);
+  };
+
+  const handleLogout = () => {
+    navigate("/");
+  };
+
+  return (
+    <div className="min-h-screen bg-background">
+      {/* Header */}
+      <header className="border-b border-border/50 bg-card/50 backdrop-blur-xl sticky top-0 z-50">
+        <div className="container mx-auto px-4 py-4 flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <a href="/" className="flex items-center gap-2">
+              <span className="text-xl font-display font-bold">
+                <span className="text-primary">Wiki</span>
+                <span className="text-foreground"> Marketing</span>
+              </span>
+            </a>
+            <span className="text-muted-foreground">|</span>
+            <span className="text-muted-foreground">Gerenciador de Contatos</span>
+          </div>
+          <Button variant="outline" size="sm" onClick={handleLogout}>
+            <LogOut className="w-4 h-4 mr-2" />
+            Sair
+          </Button>
+        </div>
+      </header>
+
+      <main className="container mx-auto px-4 py-8">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5 }}
+        >
+          {/* Upload Section */}
+          <div className="mb-8">
+            <h1 className="text-2xl font-display font-bold text-foreground mb-2">
+              Upload de Contatos
+            </h1>
+            <p className="text-muted-foreground mb-6">
+              Faça upload da sua lista de contatos em formato CSV ou Excel
+            </p>
+
+            <div
+              onDrop={handleDrop}
+              onDragOver={handleDragOver}
+              onDragLeave={handleDragLeave}
+              onClick={() => fileInputRef.current?.click()}
+              className={`
+                border-2 border-dashed rounded-2xl p-12 text-center cursor-pointer transition-all duration-300
+                ${isDragging 
+                  ? "border-primary bg-primary/10" 
+                  : "border-border/50 hover:border-primary/50 hover:bg-card/50"
+                }
+              `}
+            >
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept=".csv,.xlsx,.xls"
+                onChange={(e) => e.target.files?.[0] && handleFileUpload(e.target.files[0])}
+                className="hidden"
+              />
+              
+              <div className="flex flex-col items-center gap-4">
+                <div className="w-16 h-16 rounded-full bg-primary/20 flex items-center justify-center">
+                  <Upload className="w-8 h-8 text-primary" />
+                </div>
+                <div>
+                  <p className="text-foreground font-medium mb-1">
+                    Arraste e solte seu arquivo aqui
+                  </p>
+                  <p className="text-muted-foreground text-sm">
+                    ou clique para selecionar (CSV, Excel)
+                  </p>
+                </div>
+                {uploadedFileName && (
+                  <div className="flex items-center gap-2 bg-primary/20 text-primary px-4 py-2 rounded-full">
+                    <FileSpreadsheet className="w-4 h-4" />
+                    <span className="text-sm font-medium">{uploadedFileName}</span>
+                    <CheckCircle2 className="w-4 h-4" />
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Actions Section */}
+          <AnimatePresence>
+            {contacts.length > 0 && (
+              <motion.div
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: "auto" }}
+                exit={{ opacity: 0, height: 0 }}
+                className="mb-8"
+              >
+                <h2 className="text-xl font-display font-bold text-foreground mb-4">
+                  Selecione as Ações
+                </h2>
+                <div className="flex flex-wrap gap-3">
+                  {availableActions.map((action) => (
+                    <button
+                      key={action.id}
+                      onClick={() => toggleAction(action.id)}
+                      className={`
+                        flex items-center gap-2 px-4 py-2 rounded-full border transition-all duration-200
+                        ${selectedActions.includes(action.id)
+                          ? action.color
+                          : "border-border/50 text-muted-foreground hover:border-primary/50"
+                        }
+                      `}
+                    >
+                      {action.icon}
+                      <span className="text-sm font-medium">{action.label}</span>
+                      {selectedActions.includes(action.id) && (
+                        <CheckCircle2 className="w-4 h-4" />
+                      )}
+                    </button>
+                  ))}
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          {/* Contacts Table */}
+          <AnimatePresence>
+            {contacts.length > 0 && (
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -20 }}
+                className="bg-card/50 backdrop-blur-xl border border-border/50 rounded-2xl overflow-hidden"
+              >
+                {/* Table Header */}
+                <div className="flex items-center justify-between p-4 border-b border-border/50">
+                  <div className="flex items-center gap-4">
+                    <div className="flex items-center gap-2 text-muted-foreground">
+                      <Users className="w-5 h-5" />
+                      <span>{contacts.length} contatos</span>
+                    </div>
+                    {selectedContactsCount > 0 && (
+                      <span className="bg-primary/20 text-primary px-3 py-1 rounded-full text-sm">
+                        {selectedContactsCount} selecionados
+                      </span>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        setContacts([]);
+                        setUploadedFileName(null);
+                      }}
+                    >
+                      <X className="w-4 h-4 mr-2" />
+                      Limpar
+                    </Button>
+                    <Button
+                      variant="hero"
+                      size="sm"
+                      disabled={selectedContactsCount === 0 || selectedActions.length === 0}
+                      onClick={handleExecuteActions}
+                    >
+                      <Send className="w-4 h-4 mr-2" />
+                      Executar Ações
+                    </Button>
+                  </div>
+                </div>
+
+                {/* Table */}
+                <Table>
+                  <TableHeader>
+                    <TableRow className="hover:bg-transparent">
+                      <TableHead className="w-12">
+                        <Checkbox
+                          checked={contacts.every((c) => c.selected)}
+                          onCheckedChange={toggleAllContacts}
+                        />
+                      </TableHead>
+                      <TableHead>Nome</TableHead>
+                      <TableHead>Telefone</TableHead>
+                      <TableHead>E-mail</TableHead>
+                      <TableHead className="w-12"></TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {contacts.map((contact, index) => (
+                      <motion.tr
+                        key={contact.id}
+                        initial={{ opacity: 0, x: -20 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ delay: index * 0.05 }}
+                        className={`
+                          border-b border-border/30 transition-colors
+                          ${contact.selected ? "bg-primary/5" : "hover:bg-card/80"}
+                        `}
+                      >
+                        <TableCell>
+                          <Checkbox
+                            checked={contact.selected}
+                            onCheckedChange={() => toggleContact(contact.id)}
+                          />
+                        </TableCell>
+                        <TableCell className="font-medium text-foreground">
+                          {contact.name}
+                        </TableCell>
+                        <TableCell className="text-muted-foreground">
+                          {contact.phone}
+                        </TableCell>
+                        <TableCell className="text-muted-foreground">
+                          {contact.email}
+                        </TableCell>
+                        <TableCell>
+                          <button
+                            onClick={() => deleteContact(contact.id)}
+                            className="p-2 text-muted-foreground hover:text-destructive transition-colors"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </TableCell>
+                      </motion.tr>
+                    ))}
+                  </TableBody>
+                </Table>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          {/* Empty State */}
+          {contacts.length === 0 && (
+            <div className="text-center py-12 text-muted-foreground">
+              <FileSpreadsheet className="w-12 h-12 mx-auto mb-4 opacity-50" />
+              <p>Nenhum contato carregado ainda.</p>
+              <p className="text-sm">Faça upload de um arquivo para começar.</p>
+            </div>
+          )}
+        </motion.div>
+      </main>
+    </div>
+  );
+};
+
+export default Contacts;
