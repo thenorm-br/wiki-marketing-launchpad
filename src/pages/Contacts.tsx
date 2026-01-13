@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -28,6 +28,7 @@ import {
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { parseContactsFile } from "@/lib/contactsImport";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface Contact {
   id: string;
@@ -73,6 +74,7 @@ const availableActions: Action[] = [
 
 const Contacts = () => {
   const navigate = useNavigate();
+  const { user, loading, signOut } = useAuth();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [selectedActions, setSelectedActions] = useState<string[]>([]);
@@ -82,6 +84,29 @@ const Contacts = () => {
   const [isParsingFile, setIsParsingFile] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
 
+  // Redirect to login if not authenticated
+  useEffect(() => {
+    if (!loading && !user) {
+      navigate("/login");
+    }
+  }, [user, loading, navigate]);
+
+  const handleLogout = async () => {
+    await signOut();
+    navigate("/login");
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="w-8 h-8 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
+      </div>
+    );
+  }
+
+  if (!user) {
+    return null;
+  }
   const handleFileUpload = async (file: File) => {
     if (!file) return;
 
@@ -197,9 +222,6 @@ const Contacts = () => {
     setIsProcessing(true);
   };
 
-  const handleLogout = () => {
-    navigate("/");
-  };
 
   // Processing Modal
   if (isProcessing) {
