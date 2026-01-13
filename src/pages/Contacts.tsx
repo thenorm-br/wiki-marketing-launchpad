@@ -84,16 +84,19 @@ const Contacts = () => {
   const [isParsingFile, setIsParsingFile] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
 
+  const isAdmin = role === 'admin';
+  const hasAccess = isSubscribed || isAdmin;
+
   // Redirect to login if not authenticated
   useEffect(() => {
     if (!loading && !user) {
       navigate("/login");
     }
-    // Redirect to plans if not subscribed
-    if (!loading && user && !isSubscribed) {
+    // Redirect to plans if not subscribed (except admins)
+    if (!loading && user && !hasAccess) {
       navigate("/plans");
     }
-  }, [user, loading, isSubscribed, navigate]);
+  }, [user, loading, hasAccess, navigate]);
 
   const handleLogout = async () => {
     await signOut();
@@ -108,7 +111,7 @@ const Contacts = () => {
     );
   }
 
-  if (!user || !isSubscribed) {
+  if (!user || !hasAccess) {
     return null;
   }
   const handleFileUpload = async (file: File) => {

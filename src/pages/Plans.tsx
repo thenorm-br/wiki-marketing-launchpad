@@ -1,6 +1,6 @@
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
-import { Check, Crown, Zap, Shield, AlertCircle } from "lucide-react";
+import { Check, Crown, Zap, Shield, AlertCircle, LogOut } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useNavigate } from "react-router-dom";
 import { useEffect } from "react";
@@ -57,22 +57,29 @@ const plans = [
 ];
 
 const Plans = () => {
-  const { user, loading, isSubscribed, isEmailConfirmed, profile } = useAuth();
+  const { user, loading, isSubscribed, isEmailConfirmed, profile, role, signOut } = useAuth();
   const navigate = useNavigate();
+
+  const isAdmin = role === 'admin';
 
   useEffect(() => {
     if (!loading && !user) {
       navigate("/login");
     }
-    if (!loading && isSubscribed) {
+    // Admins e assinantes vão direto para contacts
+    if (!loading && (isSubscribed || isAdmin)) {
       navigate("/contacts");
     }
-  }, [user, loading, isSubscribed, navigate]);
+  }, [user, loading, isSubscribed, isAdmin, navigate]);
 
   const handleSelectPlan = (planId: string) => {
-    // Aqui você integraria com Stripe ou outro gateway de pagamento
     console.log("Plano selecionado:", planId);
     alert(`Integração com pagamento em breve! Plano: ${planId}`);
+  };
+
+  const handleLogout = async () => {
+    await signOut();
+    navigate("/login");
   };
 
   if (loading) {
@@ -92,6 +99,14 @@ const Plans = () => {
       </div>
 
       <div className="relative container mx-auto px-4 py-12">
+        {/* Logout Button */}
+        <div className="absolute top-4 right-4">
+          <Button variant="outline" size="sm" onClick={handleLogout}>
+            <LogOut className="w-4 h-4 mr-2" />
+            Sair
+          </Button>
+        </div>
+
         {/* Header */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
