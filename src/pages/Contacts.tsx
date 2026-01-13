@@ -74,7 +74,7 @@ const availableActions: Action[] = [
 
 const Contacts = () => {
   const navigate = useNavigate();
-  const { user, loading, signOut } = useAuth();
+  const { user, loading, signOut, profile, role } = useAuth();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [selectedActions, setSelectedActions] = useState<string[]>([]);
@@ -279,10 +279,20 @@ const Contacts = () => {
             <span className="text-muted-foreground">|</span>
             <span className="text-muted-foreground">Gerenciador de Contatos</span>
           </div>
-          <Button variant="outline" size="sm" onClick={handleLogout}>
-            <LogOut className="w-4 h-4 mr-2" />
-            Sair
-          </Button>
+          <div className="flex items-center gap-4">
+            <div className="text-right">
+              <p className="text-sm font-medium text-foreground">
+                {profile?.name || user?.email}
+              </p>
+              <p className="text-xs text-muted-foreground">
+                {role === 'admin' ? 'Administrador' : 'Usuário'}
+              </p>
+            </div>
+            <Button variant="outline" size="sm" onClick={handleLogout}>
+              <LogOut className="w-4 h-4 mr-2" />
+              Sair
+            </Button>
+          </div>
         </div>
       </header>
 

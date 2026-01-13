@@ -4,7 +4,7 @@ import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Eye, EyeOff, Lock, Mail } from "lucide-react";
+import { Eye, EyeOff, Lock, Mail, User } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 
@@ -13,6 +13,7 @@ const Login = () => {
   const { signIn, signUp, user, loading } = useAuth();
   const { toast } = useToast();
   const [showPassword, setShowPassword] = useState(false);
+  const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -28,6 +29,15 @@ const Login = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
+    if (isSignUp && !name) {
+      toast({
+        title: "Erro",
+        description: "Preencha seu nome",
+        variant: "destructive",
+      });
+      return;
+    }
+
     if (!email || !password) {
       toast({
         title: "Erro",
@@ -50,7 +60,7 @@ const Login = () => {
 
     try {
       if (isSignUp) {
-        const { error } = await signUp(email, password);
+        const { error } = await signUp(email, password, name);
         if (error) {
           toast({
             title: "Erro ao criar conta",
@@ -128,6 +138,25 @@ const Login = () => {
         {/* Login Card */}
         <div className="bg-card/50 backdrop-blur-xl border border-border/50 rounded-2xl p-8 shadow-2xl">
           <form onSubmit={handleSubmit} className="space-y-6">
+            {isSignUp && (
+              <div className="space-y-2">
+                <Label htmlFor="name" className="text-foreground">
+                  Nome
+                </Label>
+                <div className="relative">
+                  <User className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
+                  <Input
+                    id="name"
+                    type="text"
+                    placeholder="Seu nome completo"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    className="pl-10 bg-background/50 border-border/50 focus:border-primary"
+                  />
+                </div>
+              </div>
+            )}
+
             <div className="space-y-2">
               <Label htmlFor="email" className="text-foreground">
                 E-mail
