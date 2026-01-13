@@ -3,10 +3,17 @@ import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 
 type AppRole = 'admin' | 'user';
+type SubscriptionStatus = 'inactive' | 'active' | 'trial';
 
 interface Profile {
   id: string;
   name: string;
+}
+
+interface Subscription {
+  status: SubscriptionStatus;
+  plan: string | null;
+  expires_at: string | null;
 }
 
 interface AuthContextType {
@@ -14,11 +21,14 @@ interface AuthContextType {
   session: Session | null;
   profile: Profile | null;
   role: AppRole | null;
+  subscription: Subscription | null;
   loading: boolean;
   signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
   signUp: (email: string, password: string, name: string) => Promise<{ error: Error | null }>;
   signOut: () => Promise<void>;
   refreshProfile: () => Promise<void>;
+  isSubscribed: boolean;
+  isEmailConfirmed: boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -28,6 +38,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [session, setSession] = useState<Session | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [role, setRole] = useState<AppRole | null>(null);
+  const [subscription, setSubscription] = useState<Subscription | null>(null);
   const [loading, setLoading] = useState(true);
 
   const fetchProfile = async (userId: string) => {
@@ -50,6 +61,16 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     if (roleData) {
       setRole(roleData.role as AppRole);
     }
+
+    const { data: subscriptionData } = await supabase
+      .from('subscriptions')
+      .select('status, plan, expires_at')
+      .eq('user_id', userId)
+      .single();
+
+    if (subscriptionData) {
+      setSubscription(subscriptionData as Subscription);
+    }
   };
 
   const refreshProfile = async () => {
@@ -59,14 +80,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
 
   useEffect(() => {
-    // Set up auth state listener FIRST
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+    const { data: { subscription: authSubscription } } = supabase.auth.onAuthStateChange(
       (event, session) => {
         setSession(session);
         setUser(session?.user ?? null);
         setLoading(false);
 
-        // Fetch profile data when user logs in
         if (session?.user) {
           setTimeout(() => {
             fetchProfile(session.user.id);
@@ -74,11 +93,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         } else {
           setProfile(null);
           setRole(null);
+          setSubscription(null);
         }
       }
     );
 
-    // THEN check for existing session
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
       setUser(session?.user ?? null);
@@ -89,7 +108,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       }
     });
 
-    return () => subscription.unsubscribe();
+    return () => authSubscription.unsubscribe();
   }, []);
 
   const signIn = async (email: string, password: string) => {
@@ -120,10 +139,27 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     await supabase.auth.signOut();
     setProfile(null);
     setRole(null);
+    setSubscription(null);
   };
 
+  const isSubscribed = subscription?.status === 'active' || subscription?.status === 'trial';
+  const isEmailConfirmed = !!user?.email_confirmed_at;
+
   return (
-    <AuthContext.Provider value={{ user, session, profile, role, loading, signIn, signUp, signOut, refreshProfile }}>
+    <AuthContext.Provider value={{ 
+      user, 
+      session, 
+      profile, 
+      role, 
+      subscription,
+      loading, 
+      signIn, 
+      signUp, 
+      signOut, 
+      refreshProfile,
+      isSubscribed,
+      isEmailConfirmed
+    }}>
       {children}
     </AuthContext.Provider>
   );

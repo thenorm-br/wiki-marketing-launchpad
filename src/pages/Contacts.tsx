@@ -74,7 +74,7 @@ const availableActions: Action[] = [
 
 const Contacts = () => {
   const navigate = useNavigate();
-  const { user, loading, signOut, profile, role } = useAuth();
+  const { user, loading, signOut, profile, role, isSubscribed } = useAuth();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [selectedActions, setSelectedActions] = useState<string[]>([]);
@@ -89,7 +89,11 @@ const Contacts = () => {
     if (!loading && !user) {
       navigate("/login");
     }
-  }, [user, loading, navigate]);
+    // Redirect to plans if not subscribed
+    if (!loading && user && !isSubscribed) {
+      navigate("/plans");
+    }
+  }, [user, loading, isSubscribed, navigate]);
 
   const handleLogout = async () => {
     await signOut();
@@ -104,7 +108,7 @@ const Contacts = () => {
     );
   }
 
-  if (!user) {
+  if (!user || !isSubscribed) {
     return null;
   }
   const handleFileUpload = async (file: File) => {
