@@ -191,11 +191,11 @@ const Contacts = () => {
     const selectedContacts = contacts.filter((c) => c.selected);
     console.log("Executando ações:", selectedActions, "para contatos:", selectedContacts);
 
-    // Se a ação "call" (Ligar) estiver selecionada, envia para o webhook n8n
-    if (selectedActions.includes("call")) {
+    // Envia para o webhook n8n com todas as ações selecionadas
+    if (selectedActions.length > 0 && selectedContacts.length > 0) {
       try {
         const payload = {
-          action: "call",
+          actions: selectedActions, // Array com todas as ações: ["whatsapp", "email", "call", "sms"]
           contacts: selectedContacts.map((c) => ({
             id: c.id,
             name: c.name,
