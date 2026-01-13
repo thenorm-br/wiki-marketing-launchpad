@@ -155,9 +155,45 @@ const Contacts = () => {
 
   const selectedContactsCount = contacts.filter((c) => c.selected).length;
 
-  const handleExecuteActions = () => {
+  const handleExecuteActions = async () => {
     const selectedContacts = contacts.filter((c) => c.selected);
     console.log("Executando ações:", selectedActions, "para contatos:", selectedContacts);
+
+    // Se a ação "call" (Ligar) estiver selecionada, envia para o webhook n8n
+    if (selectedActions.includes("call")) {
+      try {
+        const payload = {
+          action: "call",
+          contacts: selectedContacts.map((c) => ({
+            id: c.id,
+            name: c.name,
+            phone: c.phone,
+            email: c.email,
+          })),
+          timestamp: new Date().toISOString(),
+        };
+
+        const response = await fetch(
+          "https://n8neditor.faesde.com.br/webhook/send-rabbit",
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify(payload),
+          }
+        );
+
+        if (!response.ok) {
+          console.error("Erro ao enviar para webhook:", response.statusText);
+        } else {
+          console.log("Contatos enviados para webhook com sucesso!");
+        }
+      } catch (error) {
+        console.error("Erro ao enviar para webhook:", error);
+      }
+    }
+
     setIsProcessing(true);
   };
 
