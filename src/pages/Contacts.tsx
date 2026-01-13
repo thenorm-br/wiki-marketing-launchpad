@@ -27,6 +27,7 @@ import {
   LogOut,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { parseContactsFile } from "@/lib/contactsImport";
 
 interface Contact {
   id: string;
@@ -77,26 +78,38 @@ const Contacts = () => {
   const [selectedActions, setSelectedActions] = useState<string[]>([]);
   const [isDragging, setIsDragging] = useState(false);
   const [uploadedFileName, setUploadedFileName] = useState<string | null>(null);
+  const [fileError, setFileError] = useState<string | null>(null);
+  const [isParsingFile, setIsParsingFile] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
 
-  const handleFileUpload = (file: File) => {
+  const handleFileUpload = async (file: File) => {
     if (!file) return;
 
     setUploadedFileName(file.name);
+    setFileError(null);
+    setIsParsingFile(true);
 
-    // Simula parsing de CSV/Excel
-    const mockContacts: Contact[] = [
-      { id: "1", name: "João Silva", phone: "(27) 99999-1111", email: "joao@email.com", selected: false },
-      { id: "2", name: "Maria Santos", phone: "(27) 99999-2222", email: "maria@email.com", selected: false },
-      { id: "3", name: "Pedro Oliveira", phone: "(27) 99999-3333", email: "pedro@email.com", selected: false },
-      { id: "4", name: "Ana Costa", phone: "(27) 99999-4444", email: "ana@email.com", selected: false },
-      { id: "5", name: "Carlos Lima", phone: "(27) 99999-5555", email: "carlos@email.com", selected: false },
-      { id: "6", name: "Fernanda Alves", phone: "(27) 99999-6666", email: "fernanda@email.com", selected: false },
-      { id: "7", name: "Ricardo Souza", phone: "(27) 99999-7777", email: "ricardo@email.com", selected: false },
-      { id: "8", name: "Juliana Mendes", phone: "(27) 99999-8888", email: "juliana@email.com", selected: false },
-    ];
-    
-    setContacts(mockContacts);
+    try {
+      const imported = await parseContactsFile(file);
+
+      const parsedContacts: Contact[] = imported.map((row, index) => ({
+        id: globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${index}`,
+        name: row.name,
+        phone: row.phone,
+        email: row.email,
+        selected: false,
+      }));
+
+      setContacts(parsedContacts);
+    } catch (err) {
+      console.error("Erro ao importar contatos:", err);
+      setContacts([]);
+      setFileError(
+        err instanceof Error ? err.message : "Não foi possível ler o arquivo."
+      );
+    } finally {
+      setIsParsingFile(false);
+    }
   };
 
   const handleDrop = (e: React.DragEvent) => {
@@ -182,6 +195,8 @@ const Contacts = () => {
               setContacts([]);
               setSelectedActions([]);
               setUploadedFileName(null);
+              setFileError(null);
+              setIsParsingFile(false);
             }}
           >
             Fazer Nova Solicitação
@@ -267,6 +282,16 @@ const Contacts = () => {
                     <span className="text-sm font-medium">{uploadedFileName}</span>
                     <CheckCircle2 className="w-4 h-4" />
                   </div>
+                )}
+
+                {isParsingFile && (
+                  <p className="text-sm text-muted-foreground">
+                    Importando contatos do arquivo...
+                  </p>
+                )}
+
+                {fileError && (
+                  <p className="text-sm text-destructive">{fileError}</p>
                 )}
               </div>
             </div>
