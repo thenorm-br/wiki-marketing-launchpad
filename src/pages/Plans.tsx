@@ -120,7 +120,7 @@ const Plans = () => {
           </a>
 
           <h1 className="text-4xl font-display font-bold text-foreground mb-4">
-            {user ? `Olá, ${profile?.name || "usuário"}! 👋` : "Nossos Planos"}
+            {user ? `Olá, ${profile?.full_name || "usuário"}! 👋` : "Nossos Planos"}
           </h1>
           <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
             Escolha o plano ideal para você e comece a gerenciar seus contatos de forma profissional

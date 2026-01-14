@@ -25,10 +25,13 @@ import {
   Download,
   Users,
   LogOut,
+  Mic,
+  Music,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { parseContactsFile } from "@/lib/contactsImport";
 import { useAuth } from "@/contexts/AuthContext";
+import { supabase } from "@/integrations/supabase/client";
 
 interface Contact {
   id: string;
@@ -83,7 +86,17 @@ const Contacts = () => {
   const [fileError, setFileError] = useState<string | null>(null);
   const [isParsingFile, setIsParsingFile] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
+  
+  // Audio upload states
+  const audioInputRef = useRef<HTMLInputElement>(null);
+  const [audioFile, setAudioFile] = useState<File | null>(null);
+  const [audioFileName, setAudioFileName] = useState<string | null>(null);
+  const [isUploadingAudio, setIsUploadingAudio] = useState(false);
+  const [audioError, setAudioError] = useState<string | null>(null);
+  const [uploadedAudioPath, setUploadedAudioPath] = useState<string | null>(null);
 
+  // Aguarda carregar profile/role antes de decidir acesso
+  const isLoadingAccess = loading || (user && role === null);
   const isAdmin = role === 'admin';
   const hasAccess = isSubscribed || isAdmin;
 
@@ -92,21 +105,25 @@ const Contacts = () => {
     if (!loading && !user) {
       navigate("/login");
     }
-    // Redirect to plans if not subscribed (except admins)
-    if (!loading && user && !hasAccess) {
+    // Redirect to plans APENAS após verificar role (não redireciona enquanto role é null)
+    if (!loading && user && role !== null && !hasAccess) {
       navigate("/plans");
     }
-  }, [user, loading, hasAccess, navigate]);
+  }, [user, loading, role, hasAccess, navigate]);
 
   const handleLogout = async () => {
     await signOut();
     navigate("/login");
   };
 
-  if (loading) {
+  // Mostra loading enquanto carrega auth OU enquanto carrega role
+  if (isLoadingAccess) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="w-8 h-8 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
+        <div className="flex flex-col items-center gap-4">
+          <div className="w-10 h-10 border-3 border-primary/30 border-t-primary rounded-full animate-spin" />
+          <p className="text-muted-foreground text-sm">Verificando acesso...</p>
+        </div>
       </div>
     );
   }
@@ -179,6 +196,13 @@ const Contacts = () => {
         ? prev.filter((a) => a !== actionId)
         : [...prev, actionId]
     );
+    // Se deselecionar "call", limpar o áudio
+    if (actionId === 'call' && selectedActions.includes('call')) {
+      setAudioFile(null);
+      setAudioFileName(null);
+      setAudioError(null);
+      setUploadedAudioPath(null);
+    }
   };
 
   const deleteContact = (id: string) => {
@@ -187,15 +211,100 @@ const Contacts = () => {
 
   const selectedContactsCount = contacts.filter((c) => c.selected).length;
 
+  // Validar duração do áudio (max 1 minuto)
+  const validateAudioDuration = (file: File): Promise<boolean> => {
+    return new Promise((resolve) => {
+      const audio = document.createElement('audio');
+      audio.preload = 'metadata';
+      audio.onloadedmetadata = () => {
+        window.URL.revokeObjectURL(audio.src);
+        if (audio.duration > 60) {
+          setAudioError('O áudio deve ter no máximo 1 minuto de duração.');
+          resolve(false);
+        } else {
+          resolve(true);
+        }
+      };
+      audio.onerror = () => {
+        setAudioError('Erro ao processar o arquivo de áudio.');
+        resolve(false);
+      };
+      audio.src = URL.createObjectURL(file);
+    });
+  };
+
+  const handleAudioUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !user) return;
+
+    setAudioError(null);
+    setAudioFileName(file.name);
+    
+    // Validar duração
+    const isValid = await validateAudioDuration(file);
+    if (!isValid) {
+      setAudioFileName(null);
+      return;
+    }
+
+    setAudioFile(file);
+    setIsUploadingAudio(true);
+
+    try {
+      // Upload para storage: pasta = user_id
+      const filePath = `${user.id}/${Date.now()}_${file.name}`;
+      
+      const { data, error } = await supabase.storage
+        .from('call-audios')
+        .upload(filePath, file, {
+          cacheControl: '3600',
+          upsert: true,
+        });
+
+      if (error) {
+        console.error('Erro ao fazer upload:', error);
+        setAudioError('Erro ao fazer upload do áudio. Tente novamente.');
+        setAudioFile(null);
+        setAudioFileName(null);
+      } else {
+        console.log('Áudio enviado com sucesso:', data.path);
+        setUploadedAudioPath(data.path);
+      }
+    } catch (error) {
+      console.error('Erro ao fazer upload:', error);
+      setAudioError('Erro ao fazer upload do áudio. Tente novamente.');
+      setAudioFile(null);
+      setAudioFileName(null);
+    } finally {
+      setIsUploadingAudio(false);
+    }
+  };
+
+  const removeAudio = () => {
+    setAudioFile(null);
+    setAudioFileName(null);
+    setAudioError(null);
+    setUploadedAudioPath(null);
+  };
+
   const handleExecuteActions = async () => {
     const selectedContacts = contacts.filter((c) => c.selected);
     console.log("Executando ações:", selectedActions, "para contatos:", selectedContacts);
+
+    // Se tem ação de ligação mas não tem áudio, alertar
+    if (selectedActions.includes('call') && !uploadedAudioPath) {
+      setAudioError('Por favor, envie um áudio para a ligação antes de executar.');
+      return;
+    }
 
     // Envia para o webhook n8n com todas as ações selecionadas
     if (selectedActions.length > 0 && selectedContacts.length > 0) {
       try {
         const payload = {
+          user_id: user?.id, // ID da conta do usuário logado
+          user_email: user?.email, // Email do usuário logado
           actions: selectedActions, // Array com todas as ações: ["whatsapp", "email", "call", "sms"]
+          call_audio_path: uploadedAudioPath, // Caminho do áudio para ligação (pasta = user_id)
           contacts: selectedContacts.map((c) => ({
             id: c.id,
             name: c.name,
@@ -262,6 +371,11 @@ const Contacts = () => {
               setUploadedFileName(null);
               setFileError(null);
               setIsParsingFile(false);
+              // Limpar estado do áudio
+              setAudioFile(null);
+              setAudioFileName(null);
+              setAudioError(null);
+              setUploadedAudioPath(null);
             }}
           >
             Fazer Nova Solicitação
@@ -289,7 +403,7 @@ const Contacts = () => {
           <div className="flex items-center gap-4">
             <div className="text-right">
               <p className="text-sm font-medium text-foreground">
-                {profile?.name || user?.email}
+                {profile?.full_name || user?.email}
               </p>
               <p className="text-xs text-muted-foreground">
                 {role === 'admin' ? 'Administrador' : 'Usuário'}
@@ -405,6 +519,71 @@ const Contacts = () => {
                     </button>
                   ))}
                 </div>
+
+                {/* Audio Upload for Call Action */}
+                <AnimatePresence>
+                  {selectedActions.includes('call') && (
+                    <motion.div
+                      initial={{ opacity: 0, height: 0 }}
+                      animate={{ opacity: 1, height: "auto" }}
+                      exit={{ opacity: 0, height: 0 }}
+                      className="mt-4"
+                    >
+                      <div className="bg-purple-500/10 border border-purple-500/30 rounded-xl p-4">
+                        <div className="flex items-center gap-2 mb-3">
+                          <Mic className="w-5 h-5 text-purple-400" />
+                          <h3 className="text-sm font-semibold text-purple-300">
+                            Áudio para Ligação
+                          </h3>
+                          <span className="text-xs text-muted-foreground">(máx. 1 minuto)</span>
+                        </div>
+
+                        <input
+                          ref={audioInputRef}
+                          type="file"
+                          accept="audio/*"
+                          onChange={handleAudioUpload}
+                          className="hidden"
+                        />
+
+                        {!audioFileName ? (
+                          <button
+                            onClick={() => audioInputRef.current?.click()}
+                            disabled={isUploadingAudio}
+                            className="flex items-center gap-2 px-4 py-2 bg-purple-500/20 hover:bg-purple-500/30 border border-purple-500/40 rounded-lg transition-all duration-200 text-purple-300"
+                          >
+                            <Music className="w-4 h-4" />
+                            <span className="text-sm">Enviar Áudio</span>
+                          </button>
+                        ) : (
+                          <div className="flex items-center gap-3">
+                            <div className="flex items-center gap-2 bg-purple-500/20 text-purple-300 px-4 py-2 rounded-lg">
+                              <Music className="w-4 h-4" />
+                              <span className="text-sm font-medium truncate max-w-[200px]">
+                                {audioFileName}
+                              </span>
+                              {isUploadingAudio ? (
+                                <div className="w-4 h-4 border-2 border-purple-300/30 border-t-purple-300 rounded-full animate-spin" />
+                              ) : uploadedAudioPath ? (
+                                <CheckCircle2 className="w-4 h-4 text-green-400" />
+                              ) : null}
+                            </div>
+                            <button
+                              onClick={removeAudio}
+                              className="p-2 hover:bg-destructive/20 rounded-lg transition-colors"
+                            >
+                              <X className="w-4 h-4 text-destructive" />
+                            </button>
+                          </div>
+                        )}
+
+                        {audioError && (
+                          <p className="text-sm text-destructive mt-2">{audioError}</p>
+                        )}
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
               </motion.div>
             )}
           </AnimatePresence>
