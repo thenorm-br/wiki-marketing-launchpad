@@ -195,6 +195,8 @@ const Contacts = () => {
     if (selectedActions.length > 0 && selectedContacts.length > 0) {
       try {
         const payload = {
+          user_id: user?.id, // ID da conta do usuário logado
+          user_email: user?.email, // Email do usuário logado
           actions: selectedActions, // Array com todas as ações: ["whatsapp", "email", "call", "sms"]
           contacts: selectedContacts.map((c) => ({
             id: c.id,
