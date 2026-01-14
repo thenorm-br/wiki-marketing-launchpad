@@ -84,6 +84,8 @@ const Contacts = () => {
   const [isParsingFile, setIsParsingFile] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
 
+  // Aguarda carregar profile/role antes de decidir acesso
+  const isLoadingAccess = loading || (user && role === null);
   const isAdmin = role === 'admin';
   const hasAccess = isSubscribed || isAdmin;
 
@@ -92,21 +94,25 @@ const Contacts = () => {
     if (!loading && !user) {
       navigate("/login");
     }
-    // Redirect to plans if not subscribed (except admins)
-    if (!loading && user && !hasAccess) {
+    // Redirect to plans APENAS após verificar role (não redireciona enquanto role é null)
+    if (!loading && user && role !== null && !hasAccess) {
       navigate("/plans");
     }
-  }, [user, loading, hasAccess, navigate]);
+  }, [user, loading, role, hasAccess, navigate]);
 
   const handleLogout = async () => {
     await signOut();
     navigate("/login");
   };
 
-  if (loading) {
+  // Mostra loading enquanto carrega auth OU enquanto carrega role
+  if (isLoadingAccess) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="w-8 h-8 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
+        <div className="flex flex-col items-center gap-4">
+          <div className="w-10 h-10 border-3 border-primary/30 border-t-primary rounded-full animate-spin" />
+          <p className="text-muted-foreground text-sm">Verificando acesso...</p>
+        </div>
       </div>
     );
   }
