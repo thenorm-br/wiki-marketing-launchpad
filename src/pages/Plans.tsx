@@ -63,11 +63,8 @@ const Plans = () => {
   const isAdmin = role === 'admin';
 
   useEffect(() => {
-    if (!loading && !user) {
-      navigate("/login");
-    }
-    // Admins e assinantes vão direto para contacts
-    if (!loading && (isSubscribed || isAdmin)) {
+    // Admins e assinantes logados vão direto para contacts
+    if (!loading && user && (isSubscribed || isAdmin)) {
       navigate("/contacts");
     }
   }, [user, loading, isSubscribed, isAdmin, navigate]);
@@ -99,13 +96,15 @@ const Plans = () => {
       </div>
 
       <div className="relative container mx-auto px-4 py-12">
-        {/* Logout Button */}
-        <div className="absolute top-4 right-4">
-          <Button variant="outline" size="sm" onClick={handleLogout}>
-            <LogOut className="w-4 h-4 mr-2" />
-            Sair
-          </Button>
-        </div>
+        {/* Logout Button - só mostra se logado */}
+        {user && (
+          <div className="absolute top-4 right-4">
+            <Button variant="outline" size="sm" onClick={handleLogout}>
+              <LogOut className="w-4 h-4 mr-2" />
+              Sair
+            </Button>
+          </div>
+        )}
 
         {/* Header */}
         <motion.div
@@ -121,15 +120,15 @@ const Plans = () => {
           </a>
 
           <h1 className="text-4xl font-display font-bold text-foreground mb-4">
-            Olá, {profile?.name || "usuário"}! 👋
+            {user ? `Olá, ${profile?.name || "usuário"}! 👋` : "Nossos Planos"}
           </h1>
           <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
             Escolha o plano ideal para você e comece a gerenciar seus contatos de forma profissional
           </p>
         </motion.div>
 
-        {/* Email Confirmation Warning */}
-        {!isEmailConfirmed && (
+        {/* Email Confirmation Warning - só mostra se logado e email não confirmado */}
+        {user && !isEmailConfirmed && (
           <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
