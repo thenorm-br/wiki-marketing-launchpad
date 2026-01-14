@@ -7,13 +7,15 @@ type SubscriptionStatus = 'inactive' | 'active' | 'trial';
 
 interface Profile {
   id: string;
-  name: string;
+  user_id: string;
+  full_name: string | null;
+  email: string | null;
 }
 
 interface Subscription {
-  status: SubscriptionStatus;
-  plan: string | null;
-  expires_at: string | null;
+  status: string;
+  plan: string;
+  current_period_end: string | null;
 }
 
 interface AuthContextType {
@@ -44,8 +46,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const fetchProfile = async (userId: string) => {
     const { data: profileData } = await supabase
       .from('profiles')
-      .select('*')
-      .eq('id', userId)
+      .select('id, user_id, full_name, email')
+      .eq('user_id', userId)
       .single();
 
     if (profileData) {
@@ -64,12 +66,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
     const { data: subscriptionData } = await supabase
       .from('subscriptions')
-      .select('status, plan, expires_at')
+      .select('status, plan, current_period_end')
       .eq('user_id', userId)
       .single();
 
     if (subscriptionData) {
-      setSubscription(subscriptionData as Subscription);
+      setSubscription(subscriptionData);
     }
   };
 
@@ -128,7 +130,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       options: {
         emailRedirectTo: redirectUrl,
         data: {
-          name: name,
+          full_name: name,
         },
       },
     });

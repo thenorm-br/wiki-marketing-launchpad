@@ -291,7 +291,7 @@ const Contacts = () => {
           <div className="flex items-center gap-4">
             <div className="text-right">
               <p className="text-sm font-medium text-foreground">
-                {profile?.name || user?.email}
+                {profile?.full_name || user?.email}
               </p>
               <p className="text-xs text-muted-foreground">
                 {role === 'admin' ? 'Administrador' : 'Usuário'}
