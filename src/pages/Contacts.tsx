@@ -300,11 +300,27 @@ const Contacts = () => {
     // Envia para o webhook n8n com todas as ações selecionadas
     if (selectedActions.length > 0 && selectedContacts.length > 0) {
       try {
+        // Gerar URL assinada do áudio (válida por 1 hora)
+        let callAudioUrl: string | null = null;
+        if (uploadedAudioPath && selectedActions.includes('call')) {
+          const { data: signedUrlData, error: signedUrlError } = await supabase.storage
+            .from('call-audios')
+            .createSignedUrl(uploadedAudioPath, 3600); // 3600 segundos = 1 hora
+          
+          if (signedUrlError) {
+            console.error('Erro ao gerar URL assinada:', signedUrlError);
+            setAudioError('Erro ao processar áudio. Tente novamente.');
+            return;
+          }
+          callAudioUrl = signedUrlData.signedUrl;
+        }
+
         const payload = {
           user_id: user?.id, // ID da conta do usuário logado
           user_email: user?.email, // Email do usuário logado
           actions: selectedActions, // Array com todas as ações: ["whatsapp", "email", "call", "sms"]
-          call_audio_path: uploadedAudioPath, // Caminho do áudio para ligação (pasta = user_id)
+          call_audio_url: callAudioUrl, // URL assinada do áudio (válida por 1 hora)
+          call_audio_path: uploadedAudioPath, // Caminho original no storage (backup)
           contacts: selectedContacts.map((c) => ({
             id: c.id,
             name: c.name,
