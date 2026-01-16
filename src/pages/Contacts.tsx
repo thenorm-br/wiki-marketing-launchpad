@@ -336,21 +336,41 @@ const Contacts = () => {
           timestamp: new Date().toISOString(),
         };
 
-        const response = await fetch(
-          "https://n8neditor.faesde.com.br/webhook/send-rabbit",
-          {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify(payload),
-          }
-        );
+        // Webhook específico para WhatsApp
+        const whatsappWebhook = "https://n8neditor.faesde.com.br/webhook/15f0c5d3-49d2-4bbb-b318-704d016cbbd5";
+        // Webhook para outras ações
+        const defaultWebhook = "https://n8neditor.faesde.com.br/webhook/send-rabbit";
 
-        if (!response.ok) {
-          console.error("Erro ao enviar para webhook:", response.statusText);
-        } else {
-          console.log("Contatos enviados para webhook com sucesso!");
+        // Se WhatsApp está selecionado, envia para o webhook específico
+        if (selectedActions.includes('whatsapp')) {
+          const whatsappResponse = await fetch(whatsappWebhook, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload),
+          });
+
+          if (!whatsappResponse.ok) {
+            console.error("Erro ao enviar para webhook WhatsApp:", whatsappResponse.statusText);
+          } else {
+            console.log("Campanha WhatsApp enviada com sucesso! ID:", campaignId);
+          }
+        }
+
+        // Se há outras ações além de WhatsApp, envia para o webhook padrão
+        const otherActions = selectedActions.filter(a => a !== 'whatsapp');
+        if (otherActions.length > 0) {
+          const otherPayload = { ...payload, actions: otherActions };
+          const response = await fetch(defaultWebhook, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(otherPayload),
+          });
+
+          if (!response.ok) {
+            console.error("Erro ao enviar para webhook:", response.statusText);
+          } else {
+            console.log("Outras ações enviadas com sucesso!");
+          }
         }
       } catch (error) {
         console.error("Erro ao enviar para webhook:", error);
