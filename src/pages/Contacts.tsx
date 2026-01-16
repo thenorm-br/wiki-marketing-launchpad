@@ -315,10 +315,16 @@ const Contacts = () => {
           callAudioUrl = signedUrlData.signedUrl;
         }
 
+        // Gerar ID de campanha único para WhatsApp
+        const campaignId = selectedActions.includes('whatsapp') 
+          ? `campaign_${user?.id}_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`
+          : null;
+
         const payload = {
           user_id: user?.id, // ID da conta do usuário logado
           user_email: user?.email, // Email do usuário logado
           actions: selectedActions, // Array com todas as ações: ["whatsapp", "email", "call", "sms"]
+          id_campanha: campaignId, // ID único da campanha (gerado para WhatsApp)
           call_audio_url: callAudioUrl, // URL assinada do áudio (válida por 1 hora)
           call_audio_path: uploadedAudioPath, // Caminho original no storage (backup)
           contacts: selectedContacts.map((c) => ({
