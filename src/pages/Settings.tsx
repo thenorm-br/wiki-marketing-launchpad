@@ -49,6 +49,7 @@ interface WhatsAppConfig {
   evolution_instance_name: string | null;
   cloudapi_phone_number_id: string | null;
   cloudapi_business_account_id: string | null;
+  cloudapi_access_token: string | null;
 }
 
 interface WhatsAppTemplate {
@@ -78,6 +79,7 @@ const Settings = () => {
   const [evolutionInstance, setEvolutionInstance] = useState('');
   const [cloudapiPhoneId, setCloudapiPhoneId] = useState('');
   const [cloudapiBusinessId, setCloudapiBusinessId] = useState('');
+  const [cloudapiAccessToken, setCloudapiAccessToken] = useState('');
   const [isSavingConfig, setIsSavingConfig] = useState(false);
   const [isLoadingConfig, setIsLoadingConfig] = useState(true);
 
@@ -131,6 +133,7 @@ const Settings = () => {
           setEvolutionInstance(data.evolution_instance_name || '');
           setCloudapiPhoneId(data.cloudapi_phone_number_id || '');
           setCloudapiBusinessId(data.cloudapi_business_account_id || '');
+          setCloudapiAccessToken(data.cloudapi_access_token || '');
         }
       } catch (error) {
         console.error('Erro ao carregar configuração:', error);
@@ -184,6 +187,7 @@ const Settings = () => {
         evolution_instance_name: provider === 'evolution' ? evolutionInstance : null,
         cloudapi_phone_number_id: provider === 'cloudapi' ? cloudapiPhoneId : null,
         cloudapi_business_account_id: provider === 'cloudapi' ? cloudapiBusinessId : null,
+        cloudapi_access_token: provider === 'cloudapi' ? cloudapiAccessToken : null,
       };
 
       if (config) {
@@ -492,6 +496,19 @@ const Settings = () => {
                               value={cloudapiBusinessId}
                               onChange={(e) => setCloudapiBusinessId(e.target.value)}
                             />
+                          </div>
+                          <div className="space-y-2">
+                            <Label htmlFor="access-token">Access Token</Label>
+                            <Input
+                              id="access-token"
+                              type="password"
+                              placeholder="Seu token de acesso do Meta"
+                              value={cloudapiAccessToken}
+                              onChange={(e) => setCloudapiAccessToken(e.target.value)}
+                            />
+                            <p className="text-xs text-muted-foreground">
+                              Token permanente gerado no Meta Business Suite. Mantenha em segredo!
+                            </p>
                           </div>
                           <p className="text-xs text-muted-foreground">
                             Encontre esses IDs no painel do Meta Business Suite

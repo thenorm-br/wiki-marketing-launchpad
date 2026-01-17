@@ -100,6 +100,7 @@ export type Database = {
       }
       whatsapp_config: {
         Row: {
+          cloudapi_access_token: string | null
           cloudapi_business_account_id: string | null
           cloudapi_phone_number_id: string | null
           created_at: string
@@ -110,6 +111,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          cloudapi_access_token?: string | null
           cloudapi_business_account_id?: string | null
           cloudapi_phone_number_id?: string | null
           created_at?: string
@@ -120,6 +122,7 @@ export type Database = {
           user_id: string
         }
         Update: {
+          cloudapi_access_token?: string | null
           cloudapi_business_account_id?: string | null
           cloudapi_phone_number_id?: string | null
           created_at?: string
