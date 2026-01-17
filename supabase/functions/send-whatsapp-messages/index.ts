@@ -5,31 +5,35 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+interface Contact {
+  name: string;
+  phone: string;
+  email?: string;
+}
+
+interface VariableMapping {
+  variable: string;
+  source: 'name' | 'phone' | 'email' | 'custom';
+  customValue?: string;
+}
+
 interface QueuedMessage {
   id: string;
   contact_phone: string;
   contact_name: string;
+  contact_email: string;
   template_name: string;
   template_body: string;
 }
 
-interface SendResult {
-  messageId: string;
-  success: boolean;
-  error?: string;
-}
-
 // Format phone number for WhatsApp API (remove non-digits, add country code if needed)
 function formatPhoneNumber(phone: string): string {
-  // Remove all non-digit characters
   let cleaned = phone.replace(/\D/g, '');
   
-  // If starts with 0, remove it
   if (cleaned.startsWith('0')) {
     cleaned = cleaned.substring(1);
   }
   
-  // If doesn't start with country code (55 for Brazil), add it
   if (!cleaned.startsWith('55') && cleaned.length <= 11) {
     cleaned = '55' + cleaned;
   }
@@ -37,21 +41,58 @@ function formatPhoneNumber(phone: string): string {
   return cleaned;
 }
 
-// Extract variables from template body ({{1}}, {{2}}, etc.)
-function extractVariables(body: string, contactName: string): string[] {
-  const variableMatches = body.match(/\{\{\d+\}\}/g) || [];
-  // For now, use contact name as first variable, empty for others
-  return variableMatches.map((_, index) => index === 0 ? contactName : '');
+// Get variable value based on mapping and contact data
+function getVariableValue(
+  mapping: VariableMapping,
+  contact: { name: string; phone: string; email: string }
+): string {
+  switch (mapping.source) {
+    case 'name':
+      return contact.name || '';
+    case 'phone':
+      return contact.phone || '';
+    case 'email':
+      return contact.email || '';
+    case 'custom':
+      return mapping.customValue || '';
+    default:
+      return '';
+  }
+}
+
+// Build template variables based on mappings
+function buildTemplateVariables(
+  templateBody: string,
+  mappings: VariableMapping[],
+  contact: { name: string; phone: string; email: string }
+): string[] {
+  // Extract variable placeholders from template
+  const variableMatches = templateBody.match(/\{\{\d+\}\}/g) || [];
+  const uniqueVars = [...new Set(variableMatches)].sort((a, b) => {
+    const numA = parseInt(a.replace(/\D/g, ''));
+    const numB = parseInt(b.replace(/\D/g, ''));
+    return numA - numB;
+  });
+
+  // Map each variable to its value
+  return uniqueVars.map(variable => {
+    const mapping = mappings.find(m => m.variable === variable);
+    if (mapping) {
+      return getVariableValue(mapping, contact);
+    }
+    // Default: use contact name for first variable
+    const varNum = parseInt(variable.replace(/\D/g, ''));
+    if (varNum === 1) return contact.name || '';
+    return '';
+  });
 }
 
 Deno.serve(async (req) => {
-  // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    // Get the authorization header
     const authHeader = req.headers.get('Authorization');
     if (!authHeader) {
       console.error('No authorization header provided');
@@ -61,12 +102,10 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Create Supabase client
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    // Get user from JWT
     const token = authHeader.replace('Bearer ', '');
     const { data: { user }, error: userError } = await supabase.auth.getUser(token);
 
@@ -78,12 +117,18 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Get request body
     const body = await req.json();
-    const { campaign_id, contacts, template_name, template_body } = body;
+    const { 
+      campaign_id, 
+      contacts, 
+      template_name, 
+      template_body,
+      variable_mappings = [] 
+    } = body;
 
     console.log('Processing WhatsApp campaign:', campaign_id, 'for user:', user.id);
     console.log('Contacts to process:', contacts?.length || 0);
+    console.log('Variable mappings:', JSON.stringify(variable_mappings));
 
     if (!contacts || contacts.length === 0) {
       return new Response(
@@ -92,7 +137,6 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Get user's WhatsApp config
     const { data: config, error: configError } = await supabase
       .from('whatsapp_config')
       .select('cloudapi_access_token, cloudapi_phone_number_id, provider')
@@ -122,12 +166,13 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Insert messages into queue
-    const queuedMessages = contacts.map((contact: { name: string; phone: string }) => ({
+    // Insert messages into queue with contact email
+    const queuedMessages = (contacts as Contact[]).map((contact) => ({
       user_id: user.id,
       campaign_id,
       contact_name: contact.name,
       contact_phone: contact.phone,
+      contact_email: contact.email || '',
       template_name: template_name || null,
       template_body: template_body,
       status: 'pending',
@@ -136,7 +181,7 @@ Deno.serve(async (req) => {
     const { data: insertedMessages, error: insertError } = await supabase
       .from('whatsapp_message_queue')
       .insert(queuedMessages)
-      .select('id, contact_phone, contact_name, template_name, template_body');
+      .select('id, contact_phone, contact_name, contact_email, template_name, template_body');
 
     if (insertError) {
       console.error('Error inserting messages:', insertError);
@@ -148,16 +193,21 @@ Deno.serve(async (req) => {
 
     console.log('Queued', insertedMessages?.length || 0, 'messages');
 
-    // Process messages in background (send them)
     const results: { sent: number; failed: number; errors: string[] } = {
       sent: 0,
       failed: 0,
       errors: [],
     };
 
-    for (const message of (insertedMessages || []) as QueuedMessage[]) {
+    for (const message of (insertedMessages || []) as unknown as Array<{
+      id: string;
+      contact_phone: string;
+      contact_name: string;
+      contact_email: string;
+      template_name: string;
+      template_body: string;
+    }>) {
       try {
-        // Update status to processing
         await supabase
           .from('whatsapp_message_queue')
           .update({ status: 'processing', processed_at: new Date().toISOString() })
@@ -165,13 +215,24 @@ Deno.serve(async (req) => {
 
         const formattedPhone = formatPhoneNumber(message.contact_phone);
         
-        // Build the message payload
         let messagePayload: Record<string, unknown>;
 
         if (message.template_name) {
-          // Template message
-          const variables = extractVariables(message.template_body, message.contact_name);
+          // Build variables using the mapping
+          const contactData = {
+            name: message.contact_name,
+            phone: message.contact_phone,
+            email: message.contact_email || '',
+          };
           
+          const variables = buildTemplateVariables(
+            message.template_body,
+            variable_mappings as VariableMapping[],
+            contactData
+          );
+          
+          console.log('Variables for', message.contact_name, ':', variables);
+
           messagePayload = {
             messaging_product: 'whatsapp',
             to: formattedPhone,
@@ -182,13 +243,12 @@ Deno.serve(async (req) => {
               components: variables.length > 0 ? [
                 {
                   type: 'body',
-                  parameters: variables.map(v => ({ type: 'text', text: v })),
+                  parameters: variables.map(v => ({ type: 'text', text: v || ' ' })),
                 },
               ] : undefined,
             },
           };
         } else {
-          // Regular text message (for testing - may require template in production)
           messagePayload = {
             messaging_product: 'whatsapp',
             to: formattedPhone,
@@ -197,9 +257,8 @@ Deno.serve(async (req) => {
           };
         }
 
-        console.log('Sending message to:', formattedPhone, 'Payload:', JSON.stringify(messagePayload));
+        console.log('Sending message to:', formattedPhone);
 
-        // Send via Meta Cloud API
         const metaResponse = await fetch(
           `https://graph.facebook.com/v21.0/${config.cloudapi_phone_number_id}/messages`,
           {
@@ -271,7 +330,7 @@ Deno.serve(async (req) => {
         total: insertedMessages?.length || 0,
         sent: results.sent,
         failed: results.failed,
-        errors: results.errors.slice(0, 10), // Limit errors returned
+        errors: results.errors.slice(0, 10),
       }),
       { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
