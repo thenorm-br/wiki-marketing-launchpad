@@ -330,19 +330,56 @@ const Settings = () => {
         status: 'pending' as TemplateStatus,
       };
 
+      let savedTemplateId: string | null = null;
+
       if (editingTemplate) {
         const { error } = await supabase
           .from('whatsapp_templates')
           .update(templateData)
           .eq('id', editingTemplate.id);
         if (error) throw error;
-        toast.success('Template atualizado! Aguardando análise.');
+        savedTemplateId = editingTemplate.id;
       } else {
-        const { error } = await supabase
+        const { data: insertedData, error } = await supabase
           .from('whatsapp_templates')
-          .insert(templateData);
+          .insert(templateData)
+          .select('id')
+          .single();
         if (error) throw error;
-        toast.success('Template criado! Aguardando análise.');
+        savedTemplateId = insertedData?.id || null;
+      }
+
+      // If using Cloud API and connected, submit to Meta for approval
+      if (provider === 'cloudapi' && connectionStatus === 'success' && savedTemplateId) {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session) {
+          toast.info('Enviando template para aprovação do Meta...');
+          
+          const response = await supabase.functions.invoke('submit-whatsapp-template', {
+            headers: {
+              Authorization: `Bearer ${session.access_token}`,
+            },
+            body: {
+              name: templateName,
+              category: templateCategory,
+              language: templateLanguage,
+              header_type: templateHeaderType,
+              header_content: templateHeaderType ? templateHeaderContent : null,
+              body_text: templateBody,
+              footer_text: templateFooter || null,
+              local_template_id: savedTemplateId,
+            },
+          });
+
+          if (response.error || response.data?.error) {
+            const errorMsg = response.data?.details || response.error?.message || 'Erro desconhecido';
+            toast.error(`Erro ao enviar para Meta: ${errorMsg}`);
+          } else {
+            toast.success('Template enviado para aprovação do Meta!');
+          }
+        }
+      } else {
+        toast.success(editingTemplate ? 'Template atualizado!' : 'Template criado!');
       }
 
       // Reload templates
