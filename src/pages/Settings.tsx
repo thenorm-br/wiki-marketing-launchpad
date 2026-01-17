@@ -239,22 +239,28 @@ const Settings = () => {
     try {
       const { data, error } = await supabase.functions.invoke('test-whatsapp-connection');
       
+      console.log('Connection test response:', { data, error });
+      
+      // When edge function returns non-2xx, error is set but data may still contain the response
       if (error) {
         console.error('Error testing connection:', error);
+        // Try to extract error message from data if available
+        const errorMessage = data?.error || error.message || 'Erro ao testar conexão';
         setConnectionStatus('error');
-        setConnectionMessage(error.message || 'Erro ao testar conexão');
-        toast.error('Erro ao testar conexão');
+        setConnectionMessage(errorMessage);
+        toast.error(errorMessage);
         return;
       }
 
-      if (data.success) {
+      if (data?.success) {
         setConnectionStatus('success');
         setConnectionMessage(`Conectado! Número: ${data.phoneNumber}${data.verifiedName ? ` (${data.verifiedName})` : ''}`);
         toast.success('Conexão estabelecida com sucesso!');
       } else {
         setConnectionStatus('error');
-        setConnectionMessage(data.error || 'Erro desconhecido');
-        toast.error(data.error || 'Erro ao conectar');
+        const errorMessage = data?.error || 'Erro desconhecido';
+        setConnectionMessage(errorMessage);
+        toast.error(errorMessage);
       }
     } catch (error) {
       console.error('Error testing connection:', error);

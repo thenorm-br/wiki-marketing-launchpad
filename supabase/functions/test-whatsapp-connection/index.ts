@@ -21,7 +21,7 @@ serve(async (req) => {
       console.error("No authorization header");
       return new Response(
         JSON.stringify({ success: false, error: 'Não autorizado' }),
-        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
@@ -37,7 +37,7 @@ serve(async (req) => {
       console.error("Error getting user:", userError);
       return new Response(
         JSON.stringify({ success: false, error: 'Usuário não encontrado' }),
-        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
@@ -54,7 +54,7 @@ serve(async (req) => {
       console.error("Error getting config:", configError);
       return new Response(
         JSON.stringify({ success: false, error: 'Configuração do WhatsApp não encontrada' }),
-        { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
@@ -64,7 +64,7 @@ serve(async (req) => {
       console.error("Missing credentials");
       return new Response(
         JSON.stringify({ success: false, error: 'Access Token ou Phone Number ID não configurados' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
@@ -93,7 +93,7 @@ serve(async (req) => {
           error: errorMessage,
           details: metaData.error 
         }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
