@@ -29,7 +29,16 @@ import {
   Mic,
   Music,
   Settings,
+  MessageSquare,
+  ChevronDown,
 } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { useNavigate } from "react-router-dom";
 import { parseContactsFile } from "@/lib/contactsImport";
 import { useAuth } from "@/contexts/AuthContext";
@@ -579,21 +588,37 @@ const Contacts = () => {
             <span className="text-muted-foreground">Gerenciador de Contatos</span>
           </div>
           <div className="flex items-center gap-4">
-            <div className="text-right">
-              <p className="text-sm font-medium text-foreground">
-                {profile?.full_name || user?.email}
-              </p>
-              <p className="text-xs text-muted-foreground">
-                {role === 'admin' ? 'Administrador' : 'Usuário'}
-              </p>
-            </div>
-            <Button variant="outline" size="sm" onClick={() => navigate('/settings')}>
-              <Settings className="w-4 h-4" />
-            </Button>
-            <Button variant="outline" size="sm" onClick={handleLogout}>
-              <LogOut className="w-4 h-4 mr-2" />
-              Sair
-            </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="sm" className="flex items-center gap-2">
+                  <div className="text-right">
+                    <p className="text-sm font-medium text-foreground">
+                      {profile?.full_name || user?.email}
+                    </p>
+                  </div>
+                  <ChevronDown className="w-4 h-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-48 bg-popover">
+                <DropdownMenuItem className="text-xs text-muted-foreground">
+                  {role === 'admin' ? 'Administrador' : 'Usuário'}
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={() => navigate('/results')} className="cursor-pointer">
+                  <MessageSquare className="w-4 h-4 mr-2" />
+                  Resultados
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => navigate('/settings')} className="cursor-pointer">
+                  <Settings className="w-4 h-4 mr-2" />
+                  Configurações
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={handleLogout} className="cursor-pointer text-destructive">
+                  <LogOut className="w-4 h-4 mr-2" />
+                  Sair
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </div>
       </header>
