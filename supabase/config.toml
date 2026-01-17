@@ -2,3 +2,9 @@ project_id = "fwtgjrdwdhhrbxmlqbnn"
 
 [functions.test-whatsapp-connection]
 verify_jwt = false
+
+[functions.save-whatsapp-config]
+verify_jwt = false
+
+[functions.get-whatsapp-config]
+verify_jwt = false
