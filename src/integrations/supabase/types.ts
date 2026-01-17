@@ -98,6 +98,93 @@ export type Database = {
         }
         Relationships: []
       }
+      whatsapp_config: {
+        Row: {
+          cloudapi_business_account_id: string | null
+          cloudapi_phone_number_id: string | null
+          created_at: string
+          evolution_instance_name: string | null
+          id: string
+          provider: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          cloudapi_business_account_id?: string | null
+          cloudapi_phone_number_id?: string | null
+          created_at?: string
+          evolution_instance_name?: string | null
+          id?: string
+          provider?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          cloudapi_business_account_id?: string | null
+          cloudapi_phone_number_id?: string | null
+          created_at?: string
+          evolution_instance_name?: string | null
+          id?: string
+          provider?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      whatsapp_templates: {
+        Row: {
+          body_text: string
+          buttons: Json | null
+          category: string
+          created_at: string
+          footer_text: string | null
+          header_content: string | null
+          header_type: string | null
+          id: string
+          language: string
+          meta_template_id: string | null
+          name: string
+          rejection_reason: string | null
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          body_text: string
+          buttons?: Json | null
+          category?: string
+          created_at?: string
+          footer_text?: string | null
+          header_content?: string | null
+          header_type?: string | null
+          id?: string
+          language?: string
+          meta_template_id?: string | null
+          name: string
+          rejection_reason?: string | null
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          body_text?: string
+          buttons?: Json | null
+          category?: string
+          created_at?: string
+          footer_text?: string | null
+          header_content?: string | null
+          header_type?: string | null
+          id?: string
+          language?: string
+          meta_template_id?: string | null
+          name?: string
+          rejection_reason?: string | null
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never

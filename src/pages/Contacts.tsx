@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
   Table,
   TableBody,
@@ -27,6 +28,7 @@ import {
   LogOut,
   Mic,
   Music,
+  Settings,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { parseContactsFile } from "@/lib/contactsImport";
@@ -95,6 +97,17 @@ const Contacts = () => {
   const [audioError, setAudioError] = useState<string | null>(null);
   const [uploadedAudioPath, setUploadedAudioPath] = useState<string | null>(null);
 
+  // WhatsApp template selection
+  interface WhatsAppTemplate {
+    id: string;
+    name: string;
+    body_text: string;
+    status: string;
+  }
+  const [whatsappTemplates, setWhatsappTemplates] = useState<WhatsAppTemplate[]>([]);
+  const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(null);
+  const [whatsappProvider, setWhatsappProvider] = useState<string | null>(null);
+
   // Aguarda carregar profile/role antes de decidir acesso
   const isLoadingAccess = loading || (user && role === null);
   const isAdmin = role === 'admin';
@@ -110,6 +123,42 @@ const Contacts = () => {
       navigate("/plans");
     }
   }, [user, loading, role, hasAccess, navigate]);
+
+  // Load WhatsApp config and templates
+  useEffect(() => {
+    const loadWhatsAppData = async () => {
+      if (!user) return;
+
+      try {
+        // Load provider config
+        const { data: configData } = await supabase
+          .from('whatsapp_config')
+          .select('provider')
+          .eq('user_id', user.id)
+          .maybeSingle();
+        
+        if (configData) {
+          setWhatsappProvider(configData.provider);
+        }
+
+        // Load approved templates
+        const { data: templatesData } = await supabase
+          .from('whatsapp_templates')
+          .select('id, name, body_text, status')
+          .eq('user_id', user.id)
+          .eq('status', 'approved')
+          .order('name');
+        
+        if (templatesData) {
+          setWhatsappTemplates(templatesData);
+        }
+      } catch (error) {
+        console.error('Erro ao carregar dados do WhatsApp:', error);
+      }
+    };
+
+    loadWhatsAppData();
+  }, [user]);
 
   const handleLogout = async () => {
     await signOut();
@@ -320,11 +369,20 @@ const Contacts = () => {
           ? `campaign_${user?.id}_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`
           : null;
 
+        // Encontrar template selecionado
+        const selectedTemplate = selectedTemplateId 
+          ? whatsappTemplates.find(t => t.id === selectedTemplateId)
+          : null;
+
         const payload = {
           user_id: user?.id, // ID da conta do usuário logado
           user_email: user?.email, // Email do usuário logado
           actions: selectedActions, // Array com todas as ações: ["whatsapp", "email", "call", "sms"]
           id_campanha: campaignId, // ID único da campanha (gerado para WhatsApp)
+          whatsapp_provider: whatsappProvider, // 'evolution' ou 'cloudapi'
+          whatsapp_template_id: selectedTemplateId, // ID do template (se Cloud API)
+          whatsapp_template_name: selectedTemplate?.name || null, // Nome do template
+          whatsapp_template_body: selectedTemplate?.body_text || null, // Corpo do template
           call_audio_url: callAudioUrl, // URL assinada do áudio (válida por 1 hora)
           call_audio_path: uploadedAudioPath, // Caminho original no storage (backup)
           contacts: selectedContacts.map((c) => ({
@@ -451,6 +509,9 @@ const Contacts = () => {
                 {role === 'admin' ? 'Administrador' : 'Usuário'}
               </p>
             </div>
+            <Button variant="outline" size="sm" onClick={() => navigate('/settings')}>
+              <Settings className="w-4 h-4" />
+            </Button>
             <Button variant="outline" size="sm" onClick={handleLogout}>
               <LogOut className="w-4 h-4 mr-2" />
               Sair
@@ -562,7 +623,65 @@ const Contacts = () => {
                   ))}
                 </div>
 
-                {/* Audio Upload for Call Action */}
+                {/* Template Selection for WhatsApp (Cloud API) */}
+                <AnimatePresence>
+                  {selectedActions.includes('whatsapp') && whatsappProvider === 'cloudapi' && (
+                    <motion.div
+                      initial={{ opacity: 0, height: 0 }}
+                      animate={{ opacity: 1, height: "auto" }}
+                      exit={{ opacity: 0, height: 0 }}
+                      className="mt-4"
+                    >
+                      <div className="bg-green-500/10 border border-green-500/30 rounded-xl p-4">
+                        <div className="flex items-center gap-2 mb-3">
+                          <MessageCircle className="w-5 h-5 text-green-400" />
+                          <h3 className="text-sm font-semibold text-green-300">
+                            Template de Mensagem
+                          </h3>
+                        </div>
+
+                        {whatsappTemplates.length === 0 ? (
+                          <div className="text-sm text-muted-foreground">
+                            <p>Nenhum template aprovado disponível.</p>
+                            <Button 
+                              variant="link" 
+                              className="text-green-400 p-0 h-auto"
+                              onClick={() => navigate('/settings')}
+                            >
+                              Criar templates nas Configurações
+                            </Button>
+                          </div>
+                        ) : (
+                          <Select 
+                            value={selectedTemplateId || ''} 
+                            onValueChange={setSelectedTemplateId}
+                          >
+                            <SelectTrigger className="bg-green-500/10 border-green-500/30 text-green-300">
+                              <SelectValue placeholder="Selecione um template" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {whatsappTemplates.map((template) => (
+                                <SelectItem key={template.id} value={template.id}>
+                                  {template.name}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        )}
+
+                        {selectedTemplateId && (
+                          <div className="mt-3 p-3 bg-card/50 rounded-lg border border-border/50">
+                            <p className="text-xs text-muted-foreground mb-1">Prévia:</p>
+                            <p className="text-sm text-foreground">
+                              {whatsappTemplates.find(t => t.id === selectedTemplateId)?.body_text}
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+
                 <AnimatePresence>
                   {selectedActions.includes('call') && (
                     <motion.div
