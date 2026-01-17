@@ -107,6 +107,43 @@ const Contacts = () => {
   const [whatsappTemplates, setWhatsappTemplates] = useState<WhatsAppTemplate[]>([]);
   const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(null);
   const [whatsappProvider, setWhatsappProvider] = useState<string | null>(null);
+  
+  // Variable mapping for templates
+  type VariableSource = 'name' | 'phone' | 'email' | 'custom';
+  interface VariableMapping {
+    variable: string;
+    source: VariableSource;
+    customValue?: string;
+  }
+  const [variableMappings, setVariableMappings] = useState<VariableMapping[]>([]);
+
+  // Extract variables from template body
+  const extractTemplateVariables = (body: string): string[] => {
+    const matches = body.match(/\{\{\d+\}\}/g) || [];
+    return [...new Set(matches)].sort((a, b) => {
+      const numA = parseInt(a.replace(/\D/g, ''));
+      const numB = parseInt(b.replace(/\D/g, ''));
+      return numA - numB;
+    });
+  };
+
+  // Update variable mappings when template changes
+  useEffect(() => {
+    if (selectedTemplateId) {
+      const template = whatsappTemplates.find(t => t.id === selectedTemplateId);
+      if (template) {
+        const variables = extractTemplateVariables(template.body_text);
+        const newMappings: VariableMapping[] = variables.map((v, index) => ({
+          variable: v,
+          source: index === 0 ? 'name' : 'custom', // Default first variable to name
+          customValue: '',
+        }));
+        setVariableMappings(newMappings);
+      }
+    } else {
+      setVariableMappings([]);
+    }
+  }, [selectedTemplateId, whatsappTemplates]);
 
   // Aguarda carregar profile/role antes de decidir acesso
   const isLoadingAccess = loading || (user && role === null);
@@ -406,6 +443,14 @@ const Contacts = () => {
             const whatsappContacts = selectedContacts.map(c => ({
               name: c.name,
               phone: c.phone,
+              email: c.email,
+            }));
+
+            // Build variable mappings for the API
+            const variableMappingsPayload = variableMappings.map(m => ({
+              variable: m.variable,
+              source: m.source,
+              customValue: m.customValue || '',
             }));
 
             const response = await supabase.functions.invoke('send-whatsapp-messages', {
@@ -417,6 +462,7 @@ const Contacts = () => {
                 contacts: whatsappContacts,
                 template_name: selectedTemplate?.name || null,
                 template_body: selectedTemplate?.body_text || 'Olá!',
+                variable_mappings: variableMappingsPayload,
               },
             });
 
@@ -702,11 +748,62 @@ const Contacts = () => {
                         )}
 
                         {selectedTemplateId && (
-                          <div className="mt-3 p-3 bg-card/50 rounded-lg border border-border/50">
-                            <p className="text-xs text-muted-foreground mb-1">Prévia:</p>
-                            <p className="text-sm text-foreground">
-                              {whatsappTemplates.find(t => t.id === selectedTemplateId)?.body_text}
-                            </p>
+                          <div className="mt-3 space-y-3">
+                            <div className="p-3 bg-card/50 rounded-lg border border-border/50">
+                              <p className="text-xs text-muted-foreground mb-1">Prévia:</p>
+                              <p className="text-sm text-foreground">
+                                {whatsappTemplates.find(t => t.id === selectedTemplateId)?.body_text}
+                              </p>
+                            </div>
+
+                            {/* Variable Mapping */}
+                            {variableMappings.length > 0 && (
+                              <div className="p-3 bg-yellow-500/10 rounded-lg border border-yellow-500/30">
+                                <p className="text-xs text-yellow-400 font-medium mb-3">
+                                  ⚠️ Este template possui variáveis. Mapeie cada uma:
+                                </p>
+                                <div className="space-y-2">
+                                  {variableMappings.map((mapping, index) => (
+                                    <div key={mapping.variable} className="flex items-center gap-2">
+                                      <span className="text-sm font-mono bg-yellow-500/20 px-2 py-1 rounded text-yellow-300 min-w-[50px] text-center">
+                                        {mapping.variable}
+                                      </span>
+                                      <span className="text-muted-foreground text-sm">=</span>
+                                      <Select
+                                        value={mapping.source}
+                                        onValueChange={(value: VariableSource) => {
+                                          const newMappings = [...variableMappings];
+                                          newMappings[index] = { ...mapping, source: value };
+                                          setVariableMappings(newMappings);
+                                        }}
+                                      >
+                                        <SelectTrigger className="w-[140px] bg-card/50 border-yellow-500/30">
+                                          <SelectValue />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                          <SelectItem value="name">Nome</SelectItem>
+                                          <SelectItem value="phone">Telefone</SelectItem>
+                                          <SelectItem value="email">E-mail</SelectItem>
+                                          <SelectItem value="custom">Texto fixo</SelectItem>
+                                        </SelectContent>
+                                      </Select>
+                                      {mapping.source === 'custom' && (
+                                        <Input
+                                          placeholder="Valor fixo"
+                                          className="flex-1 bg-card/50 border-yellow-500/30"
+                                          value={mapping.customValue || ''}
+                                          onChange={(e) => {
+                                            const newMappings = [...variableMappings];
+                                            newMappings[index] = { ...mapping, customValue: e.target.value };
+                                            setVariableMappings(newMappings);
+                                          }}
+                                        />
+                                      )}
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
                           </div>
                         )}
                       </div>
