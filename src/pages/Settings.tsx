@@ -86,8 +86,9 @@ const Settings = () => {
   const [isSavingConfig, setIsSavingConfig] = useState(false);
   const [isLoadingConfig, setIsLoadingConfig] = useState(true);
   const [isTestingConnection, setIsTestingConnection] = useState(false);
-  const [connectionStatus, setConnectionStatus] = useState<'idle' | 'success' | 'error'>('idle');
+  const [connectionStatus, setConnectionStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
   const [connectionMessage, setConnectionMessage] = useState('');
+  const [connectedPhoneInfo, setConnectedPhoneInfo] = useState<{ phoneNumber: string; verifiedName?: string } | null>(null);
 
   // Templates state
   const [templates, setTemplates] = useState<WhatsAppTemplate[]>([]);
@@ -119,6 +120,51 @@ const Settings = () => {
     }
   }, [user, loading, role, hasAccess, navigate]);
 
+  // Validate Cloud API connection
+  const validateConnection = async (silent: boolean = true) => {
+    setConnectionStatus('loading');
+    if (!silent) {
+      setIsTestingConnection(true);
+    }
+
+    try {
+      const { data, error } = await supabase.functions.invoke('test-whatsapp-connection');
+      
+      console.log('Connection validation response:', { data, error });
+      
+      if (error) {
+        console.error('Error validating connection:', error);
+        const errorMessage = data?.error || error.message || 'Erro ao validar conexão';
+        setConnectionStatus('error');
+        setConnectionMessage(errorMessage);
+        setConnectedPhoneInfo(null);
+        if (!silent) toast.error(errorMessage);
+        return;
+      }
+
+      if (data?.success) {
+        setConnectionStatus('success');
+        setConnectionMessage(`Conectado! Número: ${data.phoneNumber}${data.verifiedName ? ` (${data.verifiedName})` : ''}`);
+        setConnectedPhoneInfo({ phoneNumber: data.phoneNumber, verifiedName: data.verifiedName });
+        if (!silent) toast.success('Conexão estabelecida com sucesso!');
+      } else {
+        setConnectionStatus('error');
+        const errorMessage = data?.error || 'Erro desconhecido';
+        setConnectionMessage(errorMessage);
+        setConnectedPhoneInfo(null);
+        if (!silent) toast.error(errorMessage);
+      }
+    } catch (error) {
+      console.error('Error validating connection:', error);
+      setConnectionStatus('error');
+      setConnectionMessage('Erro ao validar conexão');
+      setConnectedPhoneInfo(null);
+      if (!silent) toast.error('Erro ao validar conexão');
+    } finally {
+      setIsTestingConnection(false);
+    }
+  };
+
   // Load config
   useEffect(() => {
     const loadConfig = async () => {
@@ -140,6 +186,11 @@ const Settings = () => {
           setCloudapiPhoneId(data.cloudapi_phone_number_id || '');
           setCloudapiBusinessId(data.cloudapi_business_account_id || '');
           setCloudapiAccessToken(data.cloudapi_access_token || '');
+          
+          // Auto-validate Cloud API connection if configured
+          if (data.provider === 'cloudapi' && data.cloudapi_access_token && data.cloudapi_phone_number_id) {
+            validateConnection(true);
+          }
         }
       } catch (error) {
         console.error('Erro ao carregar configuração:', error);
@@ -231,45 +282,7 @@ const Settings = () => {
       toast.error('Salve a configuração antes de testar a conexão');
       return;
     }
-
-    setIsTestingConnection(true);
-    setConnectionStatus('idle');
-    setConnectionMessage('');
-
-    try {
-      const { data, error } = await supabase.functions.invoke('test-whatsapp-connection');
-      
-      console.log('Connection test response:', { data, error });
-      
-      // When edge function returns non-2xx, error is set but data may still contain the response
-      if (error) {
-        console.error('Error testing connection:', error);
-        // Try to extract error message from data if available
-        const errorMessage = data?.error || error.message || 'Erro ao testar conexão';
-        setConnectionStatus('error');
-        setConnectionMessage(errorMessage);
-        toast.error(errorMessage);
-        return;
-      }
-
-      if (data?.success) {
-        setConnectionStatus('success');
-        setConnectionMessage(`Conectado! Número: ${data.phoneNumber}${data.verifiedName ? ` (${data.verifiedName})` : ''}`);
-        toast.success('Conexão estabelecida com sucesso!');
-      } else {
-        setConnectionStatus('error');
-        const errorMessage = data?.error || 'Erro desconhecido';
-        setConnectionMessage(errorMessage);
-        toast.error(errorMessage);
-      }
-    } catch (error) {
-      console.error('Error testing connection:', error);
-      setConnectionStatus('error');
-      setConnectionMessage('Erro ao testar conexão');
-      toast.error('Erro ao testar conexão');
-    } finally {
-      setIsTestingConnection(false);
-    }
+    await validateConnection(false);
   };
 
   const resetTemplateForm = () => {
@@ -571,14 +584,22 @@ const Settings = () => {
                             <div className={`flex items-center gap-2 p-3 rounded-lg ${
                               connectionStatus === 'success' 
                                 ? 'bg-green-500/10 text-green-500 border border-green-500/20' 
+                                : connectionStatus === 'loading'
+                                ? 'bg-blue-500/10 text-blue-500 border border-blue-500/20'
                                 : 'bg-red-500/10 text-red-500 border border-red-500/20'
                             }`}>
                               {connectionStatus === 'success' ? (
                                 <CheckCircle className="w-4 h-4" />
+                              ) : connectionStatus === 'loading' ? (
+                                <Loader2 className="w-4 h-4 animate-spin" />
                               ) : (
                                 <AlertCircle className="w-4 h-4" />
                               )}
-                              <span className="text-sm">{connectionMessage}</span>
+                              <span className="text-sm">
+                                {connectionStatus === 'loading' 
+                                  ? 'Verificando conexão...' 
+                                  : connectionMessage}
+                              </span>
                             </div>
                           )}
                         </div>
