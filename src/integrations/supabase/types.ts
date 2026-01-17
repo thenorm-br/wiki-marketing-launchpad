@@ -137,6 +137,7 @@ export type Database = {
       whatsapp_message_queue: {
         Row: {
           campaign_id: string
+          contact_email: string | null
           contact_name: string
           contact_phone: string
           created_at: string
@@ -153,6 +154,7 @@ export type Database = {
         }
         Insert: {
           campaign_id: string
+          contact_email?: string | null
           contact_name: string
           contact_phone: string
           created_at?: string
@@ -169,6 +171,7 @@ export type Database = {
         }
         Update: {
           campaign_id?: string
+          contact_email?: string | null
           contact_name?: string
           contact_phone?: string
           created_at?: string
