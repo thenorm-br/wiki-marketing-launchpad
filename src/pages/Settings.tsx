@@ -34,6 +34,7 @@ import {
   XCircle,
   Trash2,
   Edit,
+  RefreshCw,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
@@ -93,6 +94,7 @@ const Settings = () => {
   // Templates state
   const [templates, setTemplates] = useState<WhatsAppTemplate[]>([]);
   const [isLoadingTemplates, setIsLoadingTemplates] = useState(true);
+  const [isSyncingTemplates, setIsSyncingTemplates] = useState(false);
   const [isTemplateDialogOpen, setIsTemplateDialogOpen] = useState(false);
   const [editingTemplate, setEditingTemplate] = useState<WhatsAppTemplate | null>(null);
 
@@ -378,6 +380,52 @@ const Settings = () => {
     }
   };
 
+  const handleSyncTemplates = async () => {
+    if (!user) return;
+    
+    setIsSyncingTemplates(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        toast.error('Sessão expirada');
+        return;
+      }
+
+      const response = await supabase.functions.invoke('sync-whatsapp-templates', {
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
+        },
+      });
+
+      if (response.error) {
+        throw new Error(response.error.message);
+      }
+
+      const result = response.data;
+      
+      if (result.error) {
+        toast.error(result.details || result.error);
+        return;
+      }
+
+      // Reload templates from database
+      const { data } = await supabase
+        .from('whatsapp_templates')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false });
+      
+      if (data) setTemplates(data);
+      
+      toast.success(`Sincronização concluída: ${result.synced} novos, ${result.updated} atualizados`);
+    } catch (error) {
+      console.error('Erro ao sincronizar templates:', error);
+      toast.error('Erro ao sincronizar templates do Meta');
+    } finally {
+      setIsSyncingTemplates(false);
+    }
+  };
+
   const getStatusBadge = (status: TemplateStatus) => {
     switch (status) {
       case 'pending':
@@ -652,13 +700,24 @@ const Settings = () => {
                           : 'Crie templates de mensagens. Com Evolution API, não é necessário aprovação.'}
                       </CardDescription>
                     </div>
-                    <Dialog open={isTemplateDialogOpen} onOpenChange={setIsTemplateDialogOpen}>
-                      <DialogTrigger asChild>
-                        <Button onClick={() => handleOpenTemplateDialog()}>
-                          <Plus className="w-4 h-4 mr-2" />
-                          Novo Template
+                    <div className="flex items-center gap-2">
+                      {provider === 'cloudapi' && connectionStatus === 'success' && (
+                        <Button 
+                          variant="outline" 
+                          onClick={handleSyncTemplates}
+                          disabled={isSyncingTemplates}
+                        >
+                          <RefreshCw className={`w-4 h-4 mr-2 ${isSyncingTemplates ? 'animate-spin' : ''}`} />
+                          {isSyncingTemplates ? 'Sincronizando...' : 'Sincronizar do Meta'}
                         </Button>
-                      </DialogTrigger>
+                      )}
+                      <Dialog open={isTemplateDialogOpen} onOpenChange={setIsTemplateDialogOpen}>
+                        <DialogTrigger asChild>
+                          <Button onClick={() => handleOpenTemplateDialog()}>
+                            <Plus className="w-4 h-4 mr-2" />
+                            Novo Template
+                          </Button>
+                        </DialogTrigger>
                       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
                         <DialogHeader>
                           <DialogTitle>
@@ -781,6 +840,7 @@ const Settings = () => {
                         </div>
                       </DialogContent>
                     </Dialog>
+                    </div>
                   </div>
                 </CardHeader>
                 <CardContent>
