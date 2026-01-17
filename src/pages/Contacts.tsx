@@ -394,13 +394,44 @@ const Contacts = () => {
           timestamp: new Date().toISOString(),
         };
 
-        // Webhook específico para WhatsApp
-        const whatsappWebhook = "https://n8neditor.faesde.com.br/webhook/15f0c5d3-49d2-4bbb-b318-704d016cbbd5";
-        // Webhook para outras ações
-        const defaultWebhook = "https://n8neditor.faesde.com.br/webhook/send-rabbit";
+        // Se WhatsApp está selecionado e é Cloud API, envia diretamente pela Edge Function
+        if (selectedActions.includes('whatsapp') && whatsappProvider === 'cloudapi') {
+          try {
+            const { data: { session } } = await supabase.auth.getSession();
+            if (!session) {
+              console.error('Sessão expirada');
+              return;
+            }
 
-        // Se WhatsApp está selecionado, envia para o webhook específico
-        if (selectedActions.includes('whatsapp')) {
+            const whatsappContacts = selectedContacts.map(c => ({
+              name: c.name,
+              phone: c.phone,
+            }));
+
+            const response = await supabase.functions.invoke('send-whatsapp-messages', {
+              headers: {
+                Authorization: `Bearer ${session.access_token}`,
+              },
+              body: {
+                campaign_id: campaignId,
+                contacts: whatsappContacts,
+                template_name: selectedTemplate?.name || null,
+                template_body: selectedTemplate?.body_text || 'Olá!',
+              },
+            });
+
+            if (response.error) {
+              console.error('Erro ao enviar WhatsApp:', response.error);
+            } else {
+              console.log('Campanha WhatsApp enviada!', response.data);
+              console.log(`Enviadas: ${response.data.sent}, Falhas: ${response.data.failed}`);
+            }
+          } catch (error) {
+            console.error('Erro ao enviar WhatsApp via Edge Function:', error);
+          }
+        } else if (selectedActions.includes('whatsapp')) {
+          // Fallback para n8n se não for Cloud API
+          const whatsappWebhook = "https://n8neditor.faesde.com.br/webhook/15f0c5d3-49d2-4bbb-b318-704d016cbbd5";
           const whatsappResponse = await fetch(whatsappWebhook, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -417,6 +448,7 @@ const Contacts = () => {
         // Se há outras ações além de WhatsApp, envia para o webhook padrão
         const otherActions = selectedActions.filter(a => a !== 'whatsapp');
         if (otherActions.length > 0) {
+          const defaultWebhook = "https://n8neditor.faesde.com.br/webhook/send-rabbit";
           const otherPayload = { ...payload, actions: otherActions };
           const response = await fetch(defaultWebhook, {
             method: "POST",
