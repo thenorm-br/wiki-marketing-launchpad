@@ -134,6 +134,65 @@ export type Database = {
         }
         Relationships: []
       }
+      whatsapp_message_queue: {
+        Row: {
+          campaign_id: string
+          contact_name: string
+          contact_phone: string
+          created_at: string
+          error_message: string | null
+          id: string
+          meta_message_id: string | null
+          processed_at: string | null
+          sent_at: string | null
+          status: string
+          template_body: string
+          template_id: string | null
+          template_name: string | null
+          user_id: string
+        }
+        Insert: {
+          campaign_id: string
+          contact_name: string
+          contact_phone: string
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          meta_message_id?: string | null
+          processed_at?: string | null
+          sent_at?: string | null
+          status?: string
+          template_body: string
+          template_id?: string | null
+          template_name?: string | null
+          user_id: string
+        }
+        Update: {
+          campaign_id?: string
+          contact_name?: string
+          contact_phone?: string
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          meta_message_id?: string | null
+          processed_at?: string | null
+          sent_at?: string | null
+          status?: string
+          template_body?: string
+          template_id?: string | null
+          template_name?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "whatsapp_message_queue_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "whatsapp_templates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       whatsapp_templates: {
         Row: {
           body_text: string
