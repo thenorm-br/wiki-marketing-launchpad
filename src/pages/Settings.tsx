@@ -25,6 +25,9 @@ import {
   ArrowLeft,
   Smartphone,
   Cloud,
+  Loader2,
+  CheckCircle,
+  AlertCircle,
   FileText,
   Clock,
   CheckCircle2,
@@ -82,6 +85,9 @@ const Settings = () => {
   const [cloudapiAccessToken, setCloudapiAccessToken] = useState('');
   const [isSavingConfig, setIsSavingConfig] = useState(false);
   const [isLoadingConfig, setIsLoadingConfig] = useState(true);
+  const [isTestingConnection, setIsTestingConnection] = useState(false);
+  const [connectionStatus, setConnectionStatus] = useState<'idle' | 'success' | 'error'>('idle');
+  const [connectionMessage, setConnectionMessage] = useState('');
 
   // Templates state
   const [templates, setTemplates] = useState<WhatsAppTemplate[]>([]);
@@ -217,6 +223,46 @@ const Settings = () => {
       toast.error('Erro ao salvar configuração');
     } finally {
       setIsSavingConfig(false);
+    }
+  };
+
+  const handleTestConnection = async () => {
+    if (!config) {
+      toast.error('Salve a configuração antes de testar a conexão');
+      return;
+    }
+
+    setIsTestingConnection(true);
+    setConnectionStatus('idle');
+    setConnectionMessage('');
+
+    try {
+      const { data, error } = await supabase.functions.invoke('test-whatsapp-connection');
+      
+      if (error) {
+        console.error('Error testing connection:', error);
+        setConnectionStatus('error');
+        setConnectionMessage(error.message || 'Erro ao testar conexão');
+        toast.error('Erro ao testar conexão');
+        return;
+      }
+
+      if (data.success) {
+        setConnectionStatus('success');
+        setConnectionMessage(`Conectado! Número: ${data.phoneNumber}${data.verifiedName ? ` (${data.verifiedName})` : ''}`);
+        toast.success('Conexão estabelecida com sucesso!');
+      } else {
+        setConnectionStatus('error');
+        setConnectionMessage(data.error || 'Erro desconhecido');
+        toast.error(data.error || 'Erro ao conectar');
+      }
+    } catch (error) {
+      console.error('Error testing connection:', error);
+      setConnectionStatus('error');
+      setConnectionMessage('Erro ao testar conexão');
+      toast.error('Erro ao testar conexão');
+    } finally {
+      setIsTestingConnection(false);
     }
   };
 
@@ -513,12 +559,47 @@ const Settings = () => {
                           <p className="text-xs text-muted-foreground">
                             Encontre esses IDs no painel do Meta Business Suite
                           </p>
+                          
+                          {/* Connection Status */}
+                          {connectionStatus !== 'idle' && (
+                            <div className={`flex items-center gap-2 p-3 rounded-lg ${
+                              connectionStatus === 'success' 
+                                ? 'bg-green-500/10 text-green-500 border border-green-500/20' 
+                                : 'bg-red-500/10 text-red-500 border border-red-500/20'
+                            }`}>
+                              {connectionStatus === 'success' ? (
+                                <CheckCircle className="w-4 h-4" />
+                              ) : (
+                                <AlertCircle className="w-4 h-4" />
+                              )}
+                              <span className="text-sm">{connectionMessage}</span>
+                            </div>
+                          )}
                         </div>
                       )}
 
-                      <Button onClick={handleSaveConfig} disabled={isSavingConfig}>
-                        {isSavingConfig ? 'Salvando...' : 'Salvar Configuração'}
-                      </Button>
+                      <div className="flex gap-2">
+                        <Button onClick={handleSaveConfig} disabled={isSavingConfig}>
+                          {isSavingConfig ? 'Salvando...' : 'Salvar Configuração'}
+                        </Button>
+                        
+                        {provider === 'cloudapi' && config && (
+                          <Button 
+                            variant="outline" 
+                            onClick={handleTestConnection} 
+                            disabled={isTestingConnection || !cloudapiPhoneId || !cloudapiAccessToken}
+                          >
+                            {isTestingConnection ? (
+                              <>
+                                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                                Testando...
+                              </>
+                            ) : (
+                              'Testar Conexão'
+                            )}
+                          </Button>
+                        )}
+                      </div>
                     </>
                   )}
                 </CardContent>
