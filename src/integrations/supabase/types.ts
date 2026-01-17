@@ -134,6 +134,57 @@ export type Database = {
         }
         Relationships: []
       }
+      whatsapp_conversations: {
+        Row: {
+          campaign_id: string | null
+          contact_name: string | null
+          contact_phone: string
+          created_at: string
+          direction: string
+          id: string
+          media_url: string | null
+          message_content: string | null
+          message_id: string | null
+          message_type: string
+          original_message_id: string | null
+          read_at: string | null
+          status: string
+          user_id: string
+        }
+        Insert: {
+          campaign_id?: string | null
+          contact_name?: string | null
+          contact_phone: string
+          created_at?: string
+          direction?: string
+          id?: string
+          media_url?: string | null
+          message_content?: string | null
+          message_id?: string | null
+          message_type?: string
+          original_message_id?: string | null
+          read_at?: string | null
+          status?: string
+          user_id: string
+        }
+        Update: {
+          campaign_id?: string | null
+          contact_name?: string | null
+          contact_phone?: string
+          created_at?: string
+          direction?: string
+          id?: string
+          media_url?: string | null
+          message_content?: string | null
+          message_id?: string | null
+          message_type?: string
+          original_message_id?: string | null
+          read_at?: string | null
+          status?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       whatsapp_message_queue: {
         Row: {
           campaign_id: string
