@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Menu, X, User, LogOut, Settings, LayoutDashboard } from "lucide-react";
+import { Menu, X, User, LogOut, Settings, LayoutDashboard, MessageSquare } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
@@ -115,6 +115,12 @@ export const Header = () => {
                     </Link>
                   </DropdownMenuItem>
                   <DropdownMenuItem asChild>
+                    <Link to="/results" className="flex items-center gap-2 cursor-pointer">
+                      <MessageSquare className="h-4 w-4" />
+                      Resultados
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem asChild>
                     <Link to="/settings" className="flex items-center gap-2 cursor-pointer">
                       <Settings className="h-4 w-4" />
                       Configurações
@@ -204,6 +210,12 @@ export const Header = () => {
                       <Button variant="outline" className="w-full justify-start gap-2">
                         <LayoutDashboard className="h-4 w-4" />
                         Dashboard
+                      </Button>
+                    </Link>
+                    <Link to="/results" onClick={() => setIsMenuOpen(false)}>
+                      <Button variant="outline" className="w-full justify-start gap-2">
+                        <MessageSquare className="h-4 w-4" />
+                        Resultados
                       </Button>
                     </Link>
                     <Link to="/settings" onClick={() => setIsMenuOpen(false)}>
