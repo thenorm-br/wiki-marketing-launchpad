@@ -52,7 +52,7 @@ interface WhatsAppConfig {
   evolution_instance_name: string | null;
   cloudapi_phone_number_id: string | null;
   cloudapi_business_account_id: string | null;
-  cloudapi_access_token: string | null;
+  has_access_token?: boolean; // Never store actual token client-side
 }
 
 interface WhatsAppTemplate {
@@ -165,30 +165,31 @@ const Settings = () => {
     }
   };
 
-  // Load config
+  // Load config via secure edge function (never fetches access token)
   useEffect(() => {
     const loadConfig = async () => {
       if (!user) return;
       
       try {
-        const { data, error } = await supabase
-          .from('whatsapp_config')
-          .select('*')
-          .eq('user_id', user.id)
-          .maybeSingle();
+        const { data, error } = await supabase.functions.invoke('get-whatsapp-config');
+        
+        if (error) {
+          console.error('Error loading config:', error);
+          throw error;
+        }
 
-        if (error) throw error;
-
-        if (data) {
-          setConfig(data);
-          setProvider(data.provider as WhatsAppProvider);
-          setEvolutionInstance(data.evolution_instance_name || '');
-          setCloudapiPhoneId(data.cloudapi_phone_number_id || '');
-          setCloudapiBusinessId(data.cloudapi_business_account_id || '');
-          setCloudapiAccessToken(data.cloudapi_access_token || '');
+        if (data?.success && data?.config) {
+          const configData = data.config;
+          setConfig(configData);
+          setProvider(configData.provider as WhatsAppProvider);
+          setEvolutionInstance(configData.evolution_instance_name || '');
+          setCloudapiPhoneId(configData.cloudapi_phone_number_id || '');
+          setCloudapiBusinessId(configData.cloudapi_business_account_id || '');
+          // Don't set access token - it's never returned from server
+          setCloudapiAccessToken('');
           
-          // Auto-validate Cloud API connection if configured
-          if (data.provider === 'cloudapi' && data.cloudapi_access_token && data.cloudapi_phone_number_id) {
+          // Auto-validate Cloud API connection if token is configured
+          if (configData.provider === 'cloudapi' && configData.has_access_token && configData.cloudapi_phone_number_id) {
             validateConnection(true);
           }
         }
@@ -239,7 +240,6 @@ const Settings = () => {
     setIsSavingConfig(true);
     try {
       const configData = {
-        user_id: user.id,
         provider,
         evolution_instance_name: provider === 'evolution' ? evolutionInstance : null,
         cloudapi_phone_number_id: provider === 'cloudapi' ? cloudapiPhoneId : null,
@@ -247,28 +247,24 @@ const Settings = () => {
         cloudapi_access_token: provider === 'cloudapi' ? cloudapiAccessToken : null,
       };
 
-      if (config) {
-        const { error } = await supabase
-          .from('whatsapp_config')
-          .update(configData)
-          .eq('id', config.id);
-        if (error) throw error;
-      } else {
-        const { error } = await supabase
-          .from('whatsapp_config')
-          .insert(configData);
-        if (error) throw error;
+      const { data, error } = await supabase.functions.invoke('save-whatsapp-config', {
+        body: configData
+      });
+
+      if (error) throw error;
+
+      if (!data?.success) {
+        throw new Error(data?.error || 'Erro ao salvar configuração');
       }
 
       toast.success('Configuração salva com sucesso!');
       
-      // Reload config
-      const { data } = await supabase
-        .from('whatsapp_config')
-        .select('*')
-        .eq('user_id', user.id)
-        .single();
-      if (data) setConfig(data);
+      // Update config from response (without access token)
+      if (data.config) {
+        setConfig(data.config);
+        // Clear the token input after saving (security: never display stored token)
+        setCloudapiAccessToken('');
+      }
     } catch (error) {
       console.error('Erro ao salvar configuração:', error);
       toast.error('Erro ao salvar configuração');
@@ -563,16 +559,26 @@ const Settings = () => {
                             />
                           </div>
                           <div className="space-y-2">
-                            <Label htmlFor="access-token">Access Token</Label>
+                            <Label htmlFor="access-token">
+                              Access Token
+                              {config?.has_access_token && !cloudapiAccessToken && (
+                                <Badge variant="outline" className="ml-2 text-green-500 border-green-500/30">
+                                  <CheckCircle className="w-3 h-3 mr-1" />
+                                  Configurado
+                                </Badge>
+                              )}
+                            </Label>
                             <Input
                               id="access-token"
                               type="password"
-                              placeholder="Seu token de acesso do Meta"
+                              placeholder={config?.has_access_token ? "••••••••••••••••••••" : "Seu token de acesso do Meta"}
                               value={cloudapiAccessToken}
                               onChange={(e) => setCloudapiAccessToken(e.target.value)}
                             />
                             <p className="text-xs text-muted-foreground">
-                              Token permanente gerado no Meta Business Suite. Mantenha em segredo!
+                              {config?.has_access_token 
+                                ? "Token já configurado. Deixe em branco para manter o atual ou insira um novo para atualizar."
+                                : "Token permanente gerado no Meta Business Suite. Mantenha em segredo!"}
                             </p>
                           </div>
                           <p className="text-xs text-muted-foreground">
