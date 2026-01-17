@@ -587,7 +587,27 @@ const Contacts = () => {
             <span className="text-muted-foreground">|</span>
             <span className="text-muted-foreground">Gerenciador de Contatos</span>
           </div>
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2 sm:gap-4">
+            {/* Atalho visível para Resultados (evita depender do dropdown) */}
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={() => navigate("/results")}
+              aria-label="Ver resultados"
+              className="sm:hidden"
+            >
+              <MessageSquare className="w-4 h-4" />
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => navigate("/results")}
+              className="hidden sm:inline-flex"
+            >
+              <MessageSquare className="w-4 h-4" />
+              Resultados
+            </Button>
+
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="outline" size="sm" className="flex items-center gap-2">
@@ -599,7 +619,7 @@ const Contacts = () => {
                   <ChevronDown className="w-4 h-4" />
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-48 bg-popover">
+              <DropdownMenuContent align="end" className="w-48">
                 <DropdownMenuItem className="text-xs text-muted-foreground">
                   {role === 'admin' ? 'Administrador' : 'Usuário'}
                 </DropdownMenuItem>
