@@ -8,3 +8,6 @@ verify_jwt = false
 
 [functions.get-whatsapp-config]
 verify_jwt = false
+
+[functions.sync-whatsapp-templates]
+verify_jwt = false
