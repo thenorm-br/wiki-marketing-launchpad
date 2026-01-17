@@ -15,8 +15,37 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const body = await req.json()
-    console.log('n8n webhook received:', JSON.stringify(body, null, 2))
+    // Get raw body text first
+    const rawBody = await req.text()
+    console.log('n8n webhook received raw body:', rawBody)
+    
+    if (!rawBody || rawBody.trim() === '') {
+      console.log('Empty body received')
+      return new Response(JSON.stringify({ 
+        error: 'Empty body', 
+        hint: 'Make sure to send the WhatsApp message data in the request body as JSON'
+      }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      })
+    }
+
+    let body
+    try {
+      body = JSON.parse(rawBody)
+    } catch (parseError) {
+      console.error('JSON parse error:', parseError)
+      return new Response(JSON.stringify({ 
+        error: 'Invalid JSON', 
+        received: rawBody.substring(0, 200),
+        hint: 'The body must be valid JSON'
+      }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      })
+    }
+
+    console.log('n8n webhook parsed:', JSON.stringify(body, null, 2))
 
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
@@ -25,30 +54,42 @@ Deno.serve(async (req) => {
     // n8n sends an array of message objects
     const items = Array.isArray(body) ? body : [body]
     let savedCount = 0
+    const errors: string[] = []
 
     for (const item of items) {
       const phoneNumberId = item.metadata?.phone_number_id
       const messages = item.messages || []
       const contacts = item.contacts || []
 
+      console.log('Processing item with phone_number_id:', phoneNumberId)
+
       if (!phoneNumberId) {
+        errors.push('No phone_number_id in payload')
         console.log('No phone_number_id in payload')
         continue
       }
 
       // Find the user who owns this phone number
-      const { data: configData } = await supabase
+      const { data: configData, error: configError } = await supabase
         .from('whatsapp_config')
         .select('user_id')
         .eq('cloudapi_phone_number_id', phoneNumberId)
-        .single()
+        .maybeSingle()
+
+      if (configError) {
+        console.error('Error finding config:', configError)
+        errors.push(`Config error: ${configError.message}`)
+        continue
+      }
 
       if (!configData) {
         console.log('No user found for phone_number_id:', phoneNumberId)
+        errors.push(`No user found for phone_number_id: ${phoneNumberId}`)
         continue
       }
 
       const userId = configData.user_id
+      console.log('Found user:', userId)
 
       for (const message of messages) {
         const contactPhone = message.from
@@ -100,6 +141,8 @@ Deno.serve(async (req) => {
             messageContent = `[${messageType}]`
         }
 
+        console.log('Saving message from:', contactName || contactPhone, '- Content:', messageContent)
+
         // Try to find the original campaign this is a reply to
         let campaignId = null
         let originalMessageId = null
@@ -138,6 +181,7 @@ Deno.serve(async (req) => {
 
         if (insertError) {
           console.error('Error inserting conversation:', insertError)
+          errors.push(`Insert error: ${insertError.message}`)
         } else {
           console.log('Saved message from:', contactName || contactPhone)
           savedCount++
@@ -147,7 +191,8 @@ Deno.serve(async (req) => {
 
     return new Response(JSON.stringify({ 
       success: true, 
-      saved: savedCount 
+      saved: savedCount,
+      errors: errors.length > 0 ? errors : undefined
     }), {
       status: 200,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' }
