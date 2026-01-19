@@ -60,12 +60,22 @@ interface ConversationGroup {
   messages: Conversation[];
   lastMessage: Conversation;
   unreadCount: number;
+  templateName?: string;
+  templateBody?: string;
+}
+
+interface MessageQueueItem {
+  contact_phone: string;
+  campaign_id: string;
+  template_name: string | null;
+  template_body: string | null;
 }
 
 const Results = () => {
   const { user, loading: authLoading } = useAuth();
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
+  const [messageQueue, setMessageQueue] = useState<MessageQueueItem[]>([]);
   const [selectedCampaign, setSelectedCampaign] = useState<string>("all");
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
@@ -108,6 +118,15 @@ const Results = () => {
 
       if (error) throw error;
       setConversations(data || []);
+
+      // Fetch message queue for template info
+      const { data: queueData, error: queueError } = await supabase
+        .from('whatsapp_message_queue')
+        .select('contact_phone, campaign_id, template_name, template_body')
+        .eq('user_id', user.id);
+
+      if (queueError) throw queueError;
+      setMessageQueue(queueData || []);
     } catch (error: any) {
       console.error('Error fetching data:', error);
       toast({
@@ -164,16 +183,41 @@ const Results = () => {
     ? conversations 
     : conversations.filter(c => c.campaign_id === selectedCampaign);
 
+  // Helper to normalize phone for matching (remove country code prefix if present)
+  const normalizePhone = (phone: string) => {
+    // Remove all non-digits
+    const digits = phone.replace(/\D/g, '');
+    // If starts with 55 and has 12+ digits, might be with country code
+    if (digits.startsWith('55') && digits.length >= 12) {
+      return digits.slice(2); // Remove 55 prefix
+    }
+    return digits;
+  };
+
   // Group conversations by contact
   const groupedConversations = filteredConversations.reduce((acc, conv) => {
     const phone = conv.contact_phone;
     if (!acc[phone]) {
+      // Find template info from message queue
+      const normalizedConvPhone = normalizePhone(phone);
+      const queueItem = messageQueue.find(q => {
+        const normalizedQueuePhone = normalizePhone(q.contact_phone);
+        // Match by phone AND campaign if filtering, otherwise just phone
+        const phoneMatch = normalizedConvPhone === normalizedQueuePhone;
+        if (selectedCampaign !== "all") {
+          return phoneMatch && q.campaign_id === selectedCampaign;
+        }
+        return phoneMatch && q.campaign_id === conv.campaign_id;
+      });
+
       acc[phone] = {
         contact_phone: phone,
         contact_name: conv.contact_name,
         messages: [],
         lastMessage: conv,
-        unreadCount: 0
+        unreadCount: 0,
+        templateName: queueItem?.template_name || undefined,
+        templateBody: queueItem?.template_body || undefined
       };
     }
     acc[phone].messages.push(conv);
@@ -532,10 +576,30 @@ const Results = () => {
                   {selectedContact ? (
                     <>
                       <div className="p-4 border-b bg-muted/30">
-                        <p className="font-medium">
-                          {groupedConversations[selectedContact]?.contact_name || selectedContact}
-                        </p>
-                        <p className="text-sm text-muted-foreground">{selectedContact}</p>
+                        <div className="flex items-start justify-between">
+                          <div>
+                            <p className="font-medium">
+                              {groupedConversations[selectedContact]?.contact_name || selectedContact}
+                            </p>
+                            <p className="text-sm text-muted-foreground">{selectedContact}</p>
+                          </div>
+                          {groupedConversations[selectedContact]?.templateName && (
+                            <div className="text-right">
+                              <Badge variant="outline" className="mb-1">
+                                <Tag className="h-3 w-3 mr-1" />
+                                {groupedConversations[selectedContact].templateName}
+                              </Badge>
+                            </div>
+                          )}
+                        </div>
+                        {groupedConversations[selectedContact]?.templateBody && (
+                          <div className="mt-3 p-3 bg-primary/5 rounded-lg border border-primary/10">
+                            <p className="text-xs text-muted-foreground mb-1 font-medium">Template enviado:</p>
+                            <p className="text-sm text-muted-foreground whitespace-pre-wrap">
+                              {groupedConversations[selectedContact].templateBody}
+                            </p>
+                          </div>
+                        )}
                       </div>
                       <ScrollArea className="flex-1 p-4">
                         <div className="space-y-3">
