@@ -65,10 +65,23 @@ Deno.serve(async (req) => {
       const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
       const supabase = createClient(supabaseUrl, supabaseServiceKey)
 
-      // Process WhatsApp webhook payload
-      const entry = body.entry?.[0]
-      const changes = entry?.changes?.[0]
-      const value = changes?.value
+      // Support both Meta format and direct n8n format
+      let value
+      if (Array.isArray(body)) {
+        // n8n sends an array directly with the value content
+        value = body[0]
+        console.log('Processing n8n array format')
+      } else if (body.entry) {
+        // Meta standard webhook format
+        const entry = body.entry?.[0]
+        const changes = entry?.changes?.[0]
+        value = changes?.value
+        console.log('Processing Meta webhook format')
+      } else if (body.metadata && body.messages) {
+        // Direct value format
+        value = body
+        console.log('Processing direct value format')
+      }
 
       if (!value) {
         console.log('No value in webhook payload')
