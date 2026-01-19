@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
+import { supabaseWiki } from '@/lib/supabaseWiki';
 
 type AppRole = 'admin' | 'user';
 type SubscriptionStatus = 'inactive' | 'active' | 'trial';
@@ -44,7 +45,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [loading, setLoading] = useState(true);
 
   const fetchProfile = async (userId: string) => {
-    const { data: profileData } = await supabase
+    const { data: profileData } = await supabaseWiki
       .from('profiles')
       .select('id, user_id, full_name, email')
       .eq('user_id', userId)
@@ -54,7 +55,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       setProfile(profileData);
     }
 
-    const { data: roleData } = await supabase
+    const { data: roleData } = await supabaseWiki
       .from('user_roles')
       .select('role')
       .eq('user_id', userId)
@@ -64,7 +65,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       setRole(roleData.role as AppRole);
     }
 
-    const { data: subscriptionData } = await supabase
+    const { data: subscriptionData } = await supabaseWiki
       .from('subscriptions')
       .select('status, plan, current_period_end')
       .eq('user_id', userId)
