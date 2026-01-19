@@ -36,7 +36,29 @@ Deno.serve(async (req) => {
   // Handle incoming messages (POST request from Meta)
   if (req.method === 'POST') {
     try {
-      const body = await req.json()
+      // Check if body is empty
+      const contentLength = req.headers.get('content-length')
+      const bodyText = await req.text()
+      
+      if (!bodyText || bodyText.trim() === '') {
+        console.log('Empty body received, returning success')
+        return new Response(JSON.stringify({ success: true }), {
+          status: 200,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        })
+      }
+
+      let body
+      try {
+        body = JSON.parse(bodyText)
+      } catch (parseError) {
+        console.error('JSON parse error:', parseError, 'Body:', bodyText.substring(0, 200))
+        return new Response(JSON.stringify({ success: true }), {
+          status: 200,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        })
+      }
+
       console.log('Webhook received:', JSON.stringify(body, null, 2))
 
       const supabaseUrl = Deno.env.get('SUPABASE_URL')!
