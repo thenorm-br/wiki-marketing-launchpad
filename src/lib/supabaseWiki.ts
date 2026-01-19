@@ -1,20 +1,14 @@
-// Custom Supabase client configured to use the 'wiki' schema
-import { createClient, SupabaseClientOptions } from '@supabase/supabase-js';
+// Helper to query the 'wiki' schema using the main supabase client
+// This avoids creating multiple GoTrueClient instances
+import { supabase } from '@/integrations/supabase/client';
 
-const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
-const SUPABASE_PUBLISHABLE_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+// Cast to any to bypass TypeScript's schema type checking
+// The 'wiki' schema exists in DB but has no generated types
+const wikiSchema = (supabase as any).schema('wiki');
 
-// Create options with wiki schema - using type assertion to bypass schema type restriction
-const options: SupabaseClientOptions<'public'> = {
-  auth: {
-    storage: localStorage,
-    persistSession: true,
-    autoRefreshToken: true,
-  },
-  db: {
-    schema: 'wiki' as 'public' // Type assertion - actual schema used is 'wiki'
-  }
+// Export a helper for wiki schema queries (returns any to avoid type conflicts)
+export const supabaseWiki = {
+  from: (table: string): any => wikiSchema.from(table),
+  channel: (name: string) => supabase.channel(name),
+  removeChannel: (channel: ReturnType<typeof supabase.channel>) => supabase.removeChannel(channel),
 };
-
-// Create a client that uses the 'wiki' schema instead of 'public'
-export const supabaseWiki = createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, options);
