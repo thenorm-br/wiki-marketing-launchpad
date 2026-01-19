@@ -62,7 +62,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       .eq('user_id', userId)
       .limit(1);
 
-    setRole((roleRows?.[0]?.role as AppRole) ?? null);
+    // Default to 'user' role when no role is found (prevents infinite loading)
+    setRole((roleRows?.[0]?.role as AppRole) ?? 'user');
 
     const { data: subscriptionRows } = await supabaseWiki
       .from('subscriptions')
