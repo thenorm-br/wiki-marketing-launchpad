@@ -166,29 +166,35 @@ Deno.serve(async (req) => {
         }
 
         // Try to find the original campaign/message this is a reply to
+        // Only save messages from contacts who received a campaign
         let campaignId = null
         let originalMessageId = null
+        let shouldSaveMessage = false
 
         if (userId && contactPhone) {
           // Find the most recent outbound message to this contact
           const { data: lastOutbound } = await supabase
             .from('whatsapp_message_queue')
-            .select('campaign_id, id')
+            .select('campaign_id, id, contact_phone')
             .eq('user_id', userId)
-            .eq('contact_phone', contactPhone)
+            .ilike('contact_phone', `%${contactPhone.slice(-9)}%`) // Match by last 9 digits
             .eq('status', 'sent')
             .order('sent_at', { ascending: false })
             .limit(1)
-            .single()
+            .maybeSingle()
 
           if (lastOutbound) {
             campaignId = lastOutbound.campaign_id
             originalMessageId = lastOutbound.id
+            shouldSaveMessage = true
+            console.log('Found campaign for contact:', contactPhone, 'Campaign:', campaignId)
+          } else {
+            console.log('No campaign found for contact:', contactPhone, '- skipping message')
           }
         }
 
-        // Insert the conversation record
-        if (userId) {
+        // Insert the conversation record only if contact received a campaign
+        if (userId && shouldSaveMessage) {
           const { error: insertError } = await supabase
             .from('whatsapp_conversations')
             .insert({
@@ -210,6 +216,8 @@ Deno.serve(async (req) => {
           } else {
             console.log('Conversation saved successfully for contact:', contactPhone)
           }
+        } else if (!shouldSaveMessage) {
+          console.log('Skipping message from non-campaign contact:', contactPhone)
         } else {
           console.log('Could not find user for phone number ID:', phoneNumberId)
         }
