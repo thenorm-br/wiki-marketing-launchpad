@@ -101,7 +101,7 @@ const Results = () => {
       setLoading(true);
       
       // Fetch campaigns
-      const { data: campaignsData, error: campaignsError } = await supabase
+      const { data: campaignsData, error: campaignsError } = await supabaseWiki
         .from('whatsapp_campaigns')
         .select('*')
         .eq('user_id', user.id)
@@ -111,7 +111,7 @@ const Results = () => {
       setCampaigns(campaignsData || []);
       
       // Fetch conversations
-      const { data, error } = await supabase
+      const { data, error } = await supabaseWiki
         .from('whatsapp_conversations')
         .select('*')
         .eq('user_id', user.id)
@@ -121,7 +121,7 @@ const Results = () => {
       setConversations(data || []);
 
       // Fetch message queue for template info
-      const { data: queueData, error: queueError } = await supabase
+      const { data: queueData, error: queueError } = await supabaseWiki
         .from('whatsapp_message_queue')
         .select('contact_phone, campaign_id, template_name, template_body')
         .eq('user_id', user.id);
@@ -141,13 +141,13 @@ const Results = () => {
   };
 
   const setupRealtime = () => {
-    const channel = supabase
+    const channel = supabaseWiki
       .channel('conversations-changes')
       .on(
         'postgres_changes',
         {
           event: 'INSERT',
-          schema: 'public',
+          schema: 'wiki',
           table: 'whatsapp_conversations',
           filter: `user_id=eq.${user?.id}`
         },
@@ -164,7 +164,7 @@ const Results = () => {
         'postgres_changes',
         {
           event: 'INSERT',
-          schema: 'public',
+          schema: 'wiki',
           table: 'whatsapp_campaigns',
           filter: `user_id=eq.${user?.id}`
         },
@@ -175,7 +175,7 @@ const Results = () => {
       .subscribe();
 
     return () => {
-      supabase.removeChannel(channel);
+      supabaseWiki.removeChannel(channel);
     };
   };
 
@@ -252,7 +252,7 @@ const Results = () => {
   const markAsRead = async (contactPhone: string) => {
     if (!user) return;
 
-    await supabase
+    await supabaseWiki
       .from('whatsapp_conversations')
       .update({ read_at: new Date().toISOString() })
       .eq('user_id', user.id)
