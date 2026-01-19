@@ -141,50 +141,79 @@ Deno.serve(async (req) => {
             messageContent = `[${messageType}]`
         }
 
-        console.log('Saving message from:', contactName || contactPhone, '- Content:', messageContent)
+        console.log('Processing message from:', contactName || contactPhone, '- Content:', messageContent)
 
-        // Try to find the original campaign this is a reply to
+        // Try to find campaigns this contact was part of
+        // Only save the FIRST response per contact per campaign
         let campaignId = null
         let originalMessageId = null
+        let shouldSaveMessage = false
 
-        const { data: lastOutbound } = await supabase
+        const phoneDigits = contactPhone.replace(/\D/g, '')
+        const { data: outboundMessages } = await supabase
           .from('whatsapp_message_queue')
-          .select('campaign_id, id')
+          .select('campaign_id, id, contact_phone')
           .eq('user_id', userId)
-          .eq('contact_phone', contactPhone)
+          .ilike('contact_phone', `%${phoneDigits.slice(-8)}%`) // Match by last 8 digits
           .eq('status', 'sent')
           .order('sent_at', { ascending: false })
-          .limit(1)
-          .maybeSingle()
 
-        if (lastOutbound) {
-          campaignId = lastOutbound.campaign_id
-          originalMessageId = lastOutbound.id
+        if (outboundMessages && outboundMessages.length > 0) {
+          // For each campaign, check if we already have a response
+          for (const outbound of outboundMessages) {
+            // Check if there's already a response for this campaign
+            const { data: existingResponse } = await supabase
+              .from('whatsapp_conversations')
+              .select('id')
+              .eq('user_id', userId)
+              .eq('campaign_id', outbound.campaign_id)
+              .ilike('contact_phone', `%${phoneDigits.slice(-8)}%`)
+              .eq('direction', 'inbound')
+              .limit(1)
+              .maybeSingle()
+
+            if (!existingResponse) {
+              // No response yet for this campaign - save it
+              campaignId = outbound.campaign_id
+              originalMessageId = outbound.id
+              shouldSaveMessage = true
+              console.log('First response for campaign:', campaignId, 'from contact:', contactPhone)
+              break
+            } else {
+              console.log('Already have response for campaign:', outbound.campaign_id, '- skipping')
+            }
+          }
+        } else {
+          console.log('No campaign found for contact:', contactPhone)
         }
 
-        // Insert the conversation record
-        const { error: insertError } = await supabase
-          .from('whatsapp_conversations')
-          .insert({
-            user_id: userId,
-            contact_phone: contactPhone,
-            contact_name: contactName,
-            message_id: messageId,
-            direction: 'inbound',
-            message_type: messageType,
-            message_content: messageContent,
-            media_url: mediaUrl,
-            campaign_id: campaignId,
-            original_message_id: originalMessageId,
-            status: 'received'
-          })
+        // Insert the conversation record only for first response
+        if (shouldSaveMessage) {
+          const { error: insertError } = await supabase
+            .from('whatsapp_conversations')
+            .insert({
+              user_id: userId,
+              contact_phone: contactPhone,
+              contact_name: contactName,
+              message_id: messageId,
+              direction: 'inbound',
+              message_type: messageType,
+              message_content: messageContent,
+              media_url: mediaUrl,
+              campaign_id: campaignId,
+              original_message_id: originalMessageId,
+              status: 'received'
+            })
 
-        if (insertError) {
-          console.error('Error inserting conversation:', insertError)
-          errors.push(`Insert error: ${insertError.message}`)
+          if (insertError) {
+            console.error('Error inserting conversation:', insertError)
+            errors.push(`Insert error: ${insertError.message}`)
+          } else {
+            console.log('First response saved from:', contactName || contactPhone)
+            savedCount++
+          }
         } else {
-          console.log('Saved message from:', contactName || contactPhone)
-          savedCount++
+          console.log('Skipping duplicate/non-campaign response from:', contactPhone)
         }
       }
     }

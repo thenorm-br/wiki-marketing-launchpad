@@ -167,33 +167,57 @@ Deno.serve(async (req) => {
 
         // Try to find the original campaign/message this is a reply to
         // Only save messages from contacts who received a campaign
+        // And only save the FIRST response per contact per campaign
         let campaignId = null
         let originalMessageId = null
         let shouldSaveMessage = false
 
         if (userId && contactPhone) {
-          // Find the most recent outbound message to this contact
-          const { data: lastOutbound } = await supabase
+          // Find ALL campaigns this contact was part of (by matching last 8-9 digits)
+          const phoneDigits = contactPhone.replace(/\D/g, '')
+          const { data: outboundMessages } = await supabase
             .from('whatsapp_message_queue')
             .select('campaign_id, id, contact_phone')
             .eq('user_id', userId)
-            .ilike('contact_phone', `%${contactPhone.slice(-9)}%`) // Match by last 9 digits
+            .ilike('contact_phone', `%${phoneDigits.slice(-8)}%`) // Match by last 8 digits
             .eq('status', 'sent')
             .order('sent_at', { ascending: false })
-            .limit(1)
-            .maybeSingle()
 
-          if (lastOutbound) {
-            campaignId = lastOutbound.campaign_id
-            originalMessageId = lastOutbound.id
-            shouldSaveMessage = true
-            console.log('Found campaign for contact:', contactPhone, 'Campaign:', campaignId)
+          if (outboundMessages && outboundMessages.length > 0) {
+            // For each campaign, check if we already have a response
+            for (const outbound of outboundMessages) {
+              // Check if there's already a response for this campaign
+              const { data: existingResponse } = await supabase
+                .from('whatsapp_conversations')
+                .select('id')
+                .eq('user_id', userId)
+                .eq('campaign_id', outbound.campaign_id)
+                .ilike('contact_phone', `%${phoneDigits.slice(-8)}%`)
+                .eq('direction', 'inbound')
+                .limit(1)
+                .maybeSingle()
+
+              if (!existingResponse) {
+                // No response yet for this campaign - save it
+                campaignId = outbound.campaign_id
+                originalMessageId = outbound.id
+                shouldSaveMessage = true
+                console.log('First response for campaign:', campaignId, 'from contact:', contactPhone)
+                break // Only save for the first campaign without a response
+              } else {
+                console.log('Already have response for campaign:', outbound.campaign_id, 'from contact:', contactPhone, '- skipping')
+              }
+            }
+
+            if (!shouldSaveMessage) {
+              console.log('Contact already responded to all campaigns:', contactPhone)
+            }
           } else {
             console.log('No campaign found for contact:', contactPhone, '- skipping message')
           }
         }
 
-        // Insert the conversation record only if contact received a campaign
+        // Insert the conversation record only if contact received a campaign and hasn't responded yet
         if (userId && shouldSaveMessage) {
           const { error: insertError } = await supabase
             .from('whatsapp_conversations')
@@ -214,10 +238,10 @@ Deno.serve(async (req) => {
           if (insertError) {
             console.error('Error inserting conversation:', insertError)
           } else {
-            console.log('Conversation saved successfully for contact:', contactPhone)
+            console.log('First response saved successfully for contact:', contactPhone, 'campaign:', campaignId)
           }
-        } else if (!shouldSaveMessage) {
-          console.log('Skipping message from non-campaign contact:', contactPhone)
+        } else if (!shouldSaveMessage && userId) {
+          console.log('Skipping duplicate/non-campaign response from:', contactPhone)
         } else {
           console.log('Could not find user for phone number ID:', phoneNumberId)
         }
