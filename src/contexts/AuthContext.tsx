@@ -45,35 +45,32 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [loading, setLoading] = useState(true);
 
   const fetchProfile = async (userId: string) => {
-    const { data: profileData } = await supabaseWiki
+    // Avoid `.single()` here: if the row doesn't exist yet, PostgREST returns 406.
+    // Fetch as a list and pick the first row so the request stays 200 ([]) when empty.
+
+    const { data: profileRows } = await supabaseWiki
       .from('profiles')
       .select('id, user_id, full_name, email')
       .eq('user_id', userId)
-      .single();
+      .limit(1);
 
-    if (profileData) {
-      setProfile(profileData);
-    }
+    setProfile((profileRows?.[0] as Profile) ?? null);
 
-    const { data: roleData } = await supabaseWiki
+    const { data: roleRows } = await supabaseWiki
       .from('user_roles')
       .select('role')
       .eq('user_id', userId)
-      .single();
+      .limit(1);
 
-    if (roleData) {
-      setRole(roleData.role as AppRole);
-    }
+    setRole((roleRows?.[0]?.role as AppRole) ?? null);
 
-    const { data: subscriptionData } = await supabaseWiki
+    const { data: subscriptionRows } = await supabaseWiki
       .from('subscriptions')
       .select('status, plan, current_period_end')
       .eq('user_id', userId)
-      .single();
+      .limit(1);
 
-    if (subscriptionData) {
-      setSubscription(subscriptionData);
-    }
+    setSubscription((subscriptionRows?.[0] as Subscription) ?? null);
   };
 
   const refreshProfile = async () => {
