@@ -183,14 +183,15 @@ const Results = () => {
     ? conversations 
     : conversations.filter(c => c.campaign_id === selectedCampaign);
 
-  // Helper to normalize phone for matching (extract last 10-11 digits for comparison)
+  // Helper to normalize phone for matching - extract the core number (last 8 digits)
+  // This handles format variations like 83991151056 vs 558391151056
   const normalizePhone = (phone: string) => {
     // Remove all non-digits
     const digits = phone.replace(/\D/g, '');
-    // Get the last 11 digits (DDD + number) or last 10 if shorter
-    // This handles both formats: 83991151056 and 558391151056
-    if (digits.length >= 11) {
-      return digits.slice(-11); // Get last 11 digits (DDD + 9 digit mobile)
+    // Get the last 8 digits (core number without DDD/country code variations)
+    // This is the most reliable way to match phones with inconsistent formatting
+    if (digits.length >= 8) {
+      return digits.slice(-8);
     }
     return digits;
   };
