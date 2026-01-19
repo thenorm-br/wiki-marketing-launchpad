@@ -18,6 +18,3 @@ const options: SupabaseClientOptions<'public'> = {
 
 // Create a client that uses the 'wiki' schema instead of 'public'
 export const supabaseWiki = createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, options);
-
-// Re-export the auth client from the main supabase client (auth is global, not schema-specific)
-export { supabase } from '@/integrations/supabase/client';
