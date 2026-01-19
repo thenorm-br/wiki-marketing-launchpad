@@ -274,22 +274,35 @@ const Results = () => {
             </p>
           </div>
           
-          {/* Campaign Filter */}
-          <div className="flex items-center gap-2">
-            <Tag className="h-4 w-4 text-muted-foreground" />
-            <Select value={selectedCampaign} onValueChange={setSelectedCampaign}>
-              <SelectTrigger className="w-[250px]">
-                <SelectValue placeholder="Selecionar campanha" />
-              </SelectTrigger>
-              <SelectContent className="bg-popover">
-                <SelectItem value="all">Todas as campanhas</SelectItem>
-                {campaigns.map((campaign) => (
-                  <SelectItem key={campaign.id} value={campaign.id}>
-                    {campaign.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+          <div className="flex items-center gap-3">
+            {/* Refresh Button */}
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={fetchData}
+              disabled={loading}
+            >
+              <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
+              Atualizar
+            </Button>
+            
+            {/* Campaign Filter */}
+            <div className="flex items-center gap-2">
+              <Tag className="h-4 w-4 text-muted-foreground" />
+              <Select value={selectedCampaign} onValueChange={setSelectedCampaign}>
+                <SelectTrigger className="w-[250px]">
+                  <SelectValue placeholder="Selecionar campanha" />
+                </SelectTrigger>
+                <SelectContent className="bg-popover">
+                  <SelectItem value="all">Todas as campanhas</SelectItem>
+                  {campaigns.map((campaign) => (
+                    <SelectItem key={campaign.id} value={campaign.id}>
+                      {campaign.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
           </div>
         </div>
 
