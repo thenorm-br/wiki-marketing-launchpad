@@ -183,13 +183,14 @@ const Results = () => {
     ? conversations 
     : conversations.filter(c => c.campaign_id === selectedCampaign);
 
-  // Helper to normalize phone for matching (remove country code prefix if present)
+  // Helper to normalize phone for matching (extract last 10-11 digits for comparison)
   const normalizePhone = (phone: string) => {
     // Remove all non-digits
     const digits = phone.replace(/\D/g, '');
-    // If starts with 55 and has 12+ digits, might be with country code
-    if (digits.startsWith('55') && digits.length >= 12) {
-      return digits.slice(2); // Remove 55 prefix
+    // Get the last 11 digits (DDD + number) or last 10 if shorter
+    // This handles both formats: 83991151056 and 558391151056
+    if (digits.length >= 11) {
+      return digits.slice(-11); // Get last 11 digits (DDD + 9 digit mobile)
     }
     return digits;
   };
