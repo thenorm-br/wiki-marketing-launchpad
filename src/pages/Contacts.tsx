@@ -526,7 +526,7 @@ const Contacts = () => {
               
               // Update campaign stats
               if (campaignId && user) {
-                await supabase
+                await supabaseWiki
                   .from('whatsapp_campaigns')
                   .update({
                     sent_count: response.data.sent || 0,
