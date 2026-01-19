@@ -98,6 +98,253 @@ export type Database = {
         }
         Relationships: []
       }
+      whatsapp_campaigns: {
+        Row: {
+          contacts_count: number
+          created_at: string
+          failed_count: number
+          id: string
+          name: string
+          sent_count: number
+          template_id: string | null
+          template_name: string | null
+          user_id: string
+        }
+        Insert: {
+          contacts_count?: number
+          created_at?: string
+          failed_count?: number
+          id: string
+          name: string
+          sent_count?: number
+          template_id?: string | null
+          template_name?: string | null
+          user_id: string
+        }
+        Update: {
+          contacts_count?: number
+          created_at?: string
+          failed_count?: number
+          id?: string
+          name?: string
+          sent_count?: number
+          template_id?: string | null
+          template_name?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "whatsapp_campaigns_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "whatsapp_templates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      whatsapp_config: {
+        Row: {
+          cloudapi_access_token: string | null
+          cloudapi_business_account_id: string | null
+          cloudapi_phone_number_id: string | null
+          created_at: string
+          evolution_instance_name: string | null
+          id: string
+          provider: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          cloudapi_access_token?: string | null
+          cloudapi_business_account_id?: string | null
+          cloudapi_phone_number_id?: string | null
+          created_at?: string
+          evolution_instance_name?: string | null
+          id?: string
+          provider?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          cloudapi_access_token?: string | null
+          cloudapi_business_account_id?: string | null
+          cloudapi_phone_number_id?: string | null
+          created_at?: string
+          evolution_instance_name?: string | null
+          id?: string
+          provider?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      whatsapp_conversations: {
+        Row: {
+          campaign_id: string | null
+          contact_name: string | null
+          contact_phone: string
+          created_at: string
+          direction: string
+          id: string
+          media_url: string | null
+          message_content: string | null
+          message_id: string | null
+          message_type: string
+          original_message_id: string | null
+          read_at: string | null
+          status: string
+          user_id: string
+        }
+        Insert: {
+          campaign_id?: string | null
+          contact_name?: string | null
+          contact_phone: string
+          created_at?: string
+          direction?: string
+          id?: string
+          media_url?: string | null
+          message_content?: string | null
+          message_id?: string | null
+          message_type?: string
+          original_message_id?: string | null
+          read_at?: string | null
+          status?: string
+          user_id: string
+        }
+        Update: {
+          campaign_id?: string | null
+          contact_name?: string | null
+          contact_phone?: string
+          created_at?: string
+          direction?: string
+          id?: string
+          media_url?: string | null
+          message_content?: string | null
+          message_id?: string | null
+          message_type?: string
+          original_message_id?: string | null
+          read_at?: string | null
+          status?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      whatsapp_message_queue: {
+        Row: {
+          campaign_id: string
+          contact_email: string | null
+          contact_name: string
+          contact_phone: string
+          created_at: string
+          error_message: string | null
+          id: string
+          meta_message_id: string | null
+          processed_at: string | null
+          sent_at: string | null
+          status: string
+          template_body: string
+          template_id: string | null
+          template_name: string | null
+          user_id: string
+        }
+        Insert: {
+          campaign_id: string
+          contact_email?: string | null
+          contact_name: string
+          contact_phone: string
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          meta_message_id?: string | null
+          processed_at?: string | null
+          sent_at?: string | null
+          status?: string
+          template_body: string
+          template_id?: string | null
+          template_name?: string | null
+          user_id: string
+        }
+        Update: {
+          campaign_id?: string
+          contact_email?: string | null
+          contact_name?: string
+          contact_phone?: string
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          meta_message_id?: string | null
+          processed_at?: string | null
+          sent_at?: string | null
+          status?: string
+          template_body?: string
+          template_id?: string | null
+          template_name?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "whatsapp_message_queue_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "whatsapp_templates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      whatsapp_templates: {
+        Row: {
+          body_text: string
+          buttons: Json | null
+          category: string
+          created_at: string
+          footer_text: string | null
+          header_content: string | null
+          header_type: string | null
+          id: string
+          language: string
+          meta_template_id: string | null
+          name: string
+          rejection_reason: string | null
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          body_text: string
+          buttons?: Json | null
+          category?: string
+          created_at?: string
+          footer_text?: string | null
+          header_content?: string | null
+          header_type?: string | null
+          id?: string
+          language?: string
+          meta_template_id?: string | null
+          name: string
+          rejection_reason?: string | null
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          body_text?: string
+          buttons?: Json | null
+          category?: string
+          created_at?: string
+          footer_text?: string | null
+          header_content?: string | null
+          header_type?: string | null
+          id?: string
+          language?: string
+          meta_template_id?: string | null
+          name?: string
+          rejection_reason?: string | null
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never

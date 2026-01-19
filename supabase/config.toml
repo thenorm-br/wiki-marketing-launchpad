@@ -1,1 +1,25 @@
 project_id = "fwtgjrdwdhhrbxmlqbnn"
+
+[functions.test-whatsapp-connection]
+verify_jwt = false
+
+[functions.save-whatsapp-config]
+verify_jwt = false
+
+[functions.get-whatsapp-config]
+verify_jwt = false
+
+[functions.sync-whatsapp-templates]
+verify_jwt = false
+
+[functions.submit-whatsapp-template]
+verify_jwt = false
+
+[functions.send-whatsapp-messages]
+verify_jwt = false
+
+[functions.whatsapp-webhook]
+verify_jwt = false
+
+[functions.n8n-webhook]
+verify_jwt = false
