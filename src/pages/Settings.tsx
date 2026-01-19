@@ -213,7 +213,7 @@ const Settings = () => {
       if (!user) return;
 
       try {
-        const { data, error } = await supabase
+        const { data, error } = await supabaseWiki
           .from('whatsapp_templates')
           .select('*')
           .eq('user_id', user.id)
@@ -334,14 +334,14 @@ const Settings = () => {
       let savedTemplateId: string | null = null;
 
       if (editingTemplate) {
-        const { error } = await supabase
+        const { error } = await supabaseWiki
           .from('whatsapp_templates')
           .update(templateData)
           .eq('id', editingTemplate.id);
         if (error) throw error;
         savedTemplateId = editingTemplate.id;
       } else {
-        const { data: insertedData, error } = await supabase
+        const { data: insertedData, error } = await supabaseWiki
           .from('whatsapp_templates')
           .insert(templateData)
           .select('id')
@@ -384,7 +384,7 @@ const Settings = () => {
       }
 
       // Reload templates
-      const { data } = await supabase
+      const { data } = await supabaseWiki
         .from('whatsapp_templates')
         .select('*')
         .eq('user_id', user.id)
@@ -403,7 +403,7 @@ const Settings = () => {
 
   const handleDeleteTemplate = async (templateId: string) => {
     try {
-      const { error } = await supabase
+      const { error } = await supabaseWiki
         .from('whatsapp_templates')
         .delete()
         .eq('id', templateId);
@@ -447,7 +447,7 @@ const Settings = () => {
       }
 
       // Reload templates from database
-      const { data } = await supabase
+      const { data } = await supabaseWiki
         .from('whatsapp_templates')
         .select('*')
         .eq('user_id', user.id)

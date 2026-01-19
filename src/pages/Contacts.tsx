@@ -181,7 +181,7 @@ const Contacts = () => {
 
       try {
         // Load provider config
-        const { data: configData } = await supabase
+        const { data: configData } = await supabaseWiki
           .from('whatsapp_config')
           .select('provider')
           .eq('user_id', user.id)
@@ -192,7 +192,7 @@ const Contacts = () => {
         }
 
         // Load approved templates
-        const { data: templatesData } = await supabase
+        const { data: templatesData } = await supabaseWiki
           .from('whatsapp_templates')
           .select('id, name, body_text, status')
           .eq('user_id', user.id)
@@ -435,7 +435,7 @@ const Contacts = () => {
 
         // Create campaign record in database
         if (campaignId && user) {
-          const { error: campaignError } = await supabase
+          const { error: campaignError } = await supabaseWiki
             .from('whatsapp_campaigns')
             .insert({
               id: campaignId,
