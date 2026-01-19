@@ -17,15 +17,6 @@ interface VariableMapping {
   customValue?: string;
 }
 
-interface QueuedMessage {
-  id: string;
-  contact_phone: string;
-  contact_name: string;
-  contact_email: string;
-  template_name: string;
-  template_body: string;
-}
-
 // Format phone number for WhatsApp API (remove non-digits, add country code if needed)
 function formatPhoneNumber(phone: string): string {
   let cleaned = phone.replace(/\D/g, '');
@@ -104,7 +95,9 @@ Deno.serve(async (req) => {
 
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+    const supabase = createClient(supabaseUrl, supabaseServiceKey, {
+      db: { schema: 'wiki' }
+    });
 
     const token = authHeader.replace('Bearer ', '');
     const { data: { user }, error: userError } = await supabase.auth.getUser(token);
