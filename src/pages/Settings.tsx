@@ -39,6 +39,7 @@ import {
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
+import { supabaseWiki } from "@/lib/supabaseWiki";
 import { toast } from "sonner";
 
 type WhatsAppProvider = 'evolution' | 'cloudapi';

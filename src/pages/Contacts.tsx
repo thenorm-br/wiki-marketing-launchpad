@@ -43,6 +43,7 @@ import { useNavigate } from "react-router-dom";
 import { parseContactsFile } from "@/lib/contactsImport";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
+import { supabaseWiki } from "@/lib/supabaseWiki";
 import { CampaignNameModal } from "@/components/CampaignNameModal";
 import { toast } from "@/hooks/use-toast";
 
