@@ -43,6 +43,8 @@ import { useNavigate } from "react-router-dom";
 import { parseContactsFile } from "@/lib/contactsImport";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
+import { CampaignNameModal } from "@/components/CampaignNameModal";
+import { toast } from "@/hooks/use-toast";
 
 interface Contact {
   id: string;
@@ -126,7 +128,8 @@ const Contacts = () => {
   }
   const [variableMappings, setVariableMappings] = useState<VariableMapping[]>([]);
 
-  // Extract variables from template body
+  // Campaign name modal
+  const [showCampaignModal, setShowCampaignModal] = useState(false);
   const extractTemplateVariables = (body: string): string[] => {
     const matches = body.match(/\{\{\d+\}\}/g) || [];
     return [...new Set(matches)].sort((a, b) => {
@@ -382,15 +385,24 @@ const Contacts = () => {
     setUploadedAudioPath(null);
   };
 
-  const handleExecuteActions = async () => {
+  // Open campaign modal instead of executing directly
+  const handleExecuteClick = () => {
     const selectedContacts = contacts.filter((c) => c.selected);
-    console.log("Executando ações:", selectedActions, "para contatos:", selectedContacts);
-
-    // Se tem ação de ligação mas não tem áudio, alertar
+    
     if (selectedActions.includes('call') && !uploadedAudioPath) {
       setAudioError('Por favor, envie um áudio para a ligação antes de executar.');
       return;
     }
+    
+    if (selectedActions.length > 0 && selectedContacts.length > 0) {
+      setShowCampaignModal(true);
+    }
+  };
+
+  const handleExecuteActions = async (campaignName: string) => {
+    setShowCampaignModal(false);
+    const selectedContacts = contacts.filter((c) => c.selected);
+    console.log("Executando ações:", selectedActions, "para contatos:", selectedContacts);
 
     // Envia para o webhook n8n com todas as ações selecionadas
     if (selectedActions.length > 0 && selectedContacts.length > 0) {
@@ -420,11 +432,36 @@ const Contacts = () => {
           ? whatsappTemplates.find(t => t.id === selectedTemplateId)
           : null;
 
+        // Create campaign record in database
+        if (campaignId && user) {
+          const { error: campaignError } = await supabase
+            .from('whatsapp_campaigns')
+            .insert({
+              id: campaignId,
+              user_id: user.id,
+              name: campaignName,
+              template_id: selectedTemplateId || null,
+              template_name: selectedTemplate?.name || null,
+              contacts_count: selectedContacts.length,
+            });
+          
+          if (campaignError) {
+            console.error('Erro ao criar campanha:', campaignError);
+            toast({
+              title: "Erro ao criar campanha",
+              description: campaignError.message,
+              variant: "destructive"
+            });
+            return;
+          }
+        }
+
         const payload = {
           user_id: user?.id, // ID da conta do usuário logado
           user_email: user?.email, // Email do usuário logado
           actions: selectedActions, // Array com todas as ações: ["whatsapp", "email", "call", "sms"]
           id_campanha: campaignId, // ID único da campanha (gerado para WhatsApp)
+          campaign_name: campaignName, // Nome da campanha
           whatsapp_provider: whatsappProvider, // 'evolution' ou 'cloudapi'
           whatsapp_template_id: selectedTemplateId, // ID do template (se Cloud API)
           whatsapp_template_name: selectedTemplate?.name || null, // Nome do template
@@ -477,9 +514,30 @@ const Contacts = () => {
 
             if (response.error) {
               console.error('Erro ao enviar WhatsApp:', response.error);
+              toast({
+                title: "Erro no envio",
+                description: response.error.message,
+                variant: "destructive"
+              });
             } else {
               console.log('Campanha WhatsApp enviada!', response.data);
               console.log(`Enviadas: ${response.data.sent}, Falhas: ${response.data.failed}`);
+              
+              // Update campaign stats
+              if (campaignId && user) {
+                await supabase
+                  .from('whatsapp_campaigns')
+                  .update({
+                    sent_count: response.data.sent || 0,
+                    failed_count: response.data.failed || 0,
+                  })
+                  .eq('id', campaignId);
+              }
+              
+              toast({
+                title: "Campanha enviada!",
+                description: `${response.data.sent} mensagens enviadas com sucesso.`,
+              });
             }
           } catch (error) {
             console.error('Erro ao enviar WhatsApp via Edge Function:', error);
@@ -961,7 +1019,7 @@ const Contacts = () => {
                       variant="hero"
                       size="sm"
                       disabled={selectedContactsCount === 0 || selectedActions.length === 0}
-                      onClick={handleExecuteActions}
+                      onClick={handleExecuteClick}
                     >
                       <Send className="w-4 h-4 mr-2" />
                       Executar Ações
@@ -1037,6 +1095,14 @@ const Contacts = () => {
             </div>
           )}
         </motion.div>
+
+        {/* Campaign Name Modal */}
+        <CampaignNameModal
+          isOpen={showCampaignModal}
+          onClose={() => setShowCampaignModal(false)}
+          onConfirm={handleExecuteActions}
+          contactsCount={contacts.filter(c => c.selected).length}
+        />
       </main>
     </div>
   );

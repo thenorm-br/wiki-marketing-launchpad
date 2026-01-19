@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { 
   MessageSquare, 
   Phone, 
@@ -20,7 +21,10 @@ import {
   ArrowDownLeft,
   ArrowUpRight,
   Copy,
-  ExternalLink
+  ExternalLink,
+  Tag,
+  Users,
+  Send
 } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { format } from "date-fns";
@@ -40,6 +44,16 @@ interface Conversation {
   read_at: string | null;
 }
 
+interface Campaign {
+  id: string;
+  name: string;
+  template_name: string | null;
+  contacts_count: number;
+  sent_count: number;
+  failed_count: number;
+  created_at: string;
+}
+
 interface ConversationGroup {
   contact_phone: string;
   contact_name: string | null;
@@ -51,6 +65,8 @@ interface ConversationGroup {
 const Results = () => {
   const { user, loading: authLoading } = useAuth();
   const [conversations, setConversations] = useState<Conversation[]>([]);
+  const [campaigns, setCampaigns] = useState<Campaign[]>([]);
+  const [selectedCampaign, setSelectedCampaign] = useState<string>("all");
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedContact, setSelectedContact] = useState<string | null>(null);
@@ -58,7 +74,7 @@ const Results = () => {
 
   useEffect(() => {
     if (user) {
-      fetchConversations();
+      fetchData();
       setupRealtime();
       
       // Set webhook URL
@@ -67,11 +83,23 @@ const Results = () => {
     }
   }, [user]);
 
-  const fetchConversations = async () => {
+  const fetchData = async () => {
     if (!user) return;
 
     try {
       setLoading(true);
+      
+      // Fetch campaigns
+      const { data: campaignsData, error: campaignsError } = await supabase
+        .from('whatsapp_campaigns')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false });
+      
+      if (campaignsError) throw campaignsError;
+      setCampaigns(campaignsData || []);
+      
+      // Fetch conversations
       const { data, error } = await supabase
         .from('whatsapp_conversations')
         .select('*')
@@ -81,9 +109,9 @@ const Results = () => {
       if (error) throw error;
       setConversations(data || []);
     } catch (error: any) {
-      console.error('Error fetching conversations:', error);
+      console.error('Error fetching data:', error);
       toast({
-        title: "Erro ao carregar conversas",
+        title: "Erro ao carregar dados",
         description: error.message,
         variant: "destructive"
       });
@@ -112,6 +140,18 @@ const Results = () => {
           });
         }
       )
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'whatsapp_campaigns',
+          filter: `user_id=eq.${user?.id}`
+        },
+        (payload) => {
+          setCampaigns(prev => [payload.new as Campaign, ...prev]);
+        }
+      )
       .subscribe();
 
     return () => {
@@ -119,8 +159,13 @@ const Results = () => {
     };
   };
 
+  // Filter conversations by selected campaign
+  const filteredConversations = selectedCampaign === "all" 
+    ? conversations 
+    : conversations.filter(c => c.campaign_id === selectedCampaign);
+
   // Group conversations by contact
-  const groupedConversations = conversations.reduce((acc, conv) => {
+  const groupedConversations = filteredConversations.reduce((acc, conv) => {
     const phone = conv.contact_phone;
     if (!acc[phone]) {
       acc[phone] = {
@@ -176,10 +221,15 @@ const Results = () => {
     });
   };
 
-  // Stats
-  const totalResponses = conversations.filter(c => c.direction === 'inbound').length;
-  const uniqueContacts = new Set(conversations.map(c => c.contact_phone)).size;
-  const unreadCount = conversations.filter(c => c.direction === 'inbound' && !c.read_at).length;
+  // Stats based on filtered conversations
+  const totalResponses = filteredConversations.filter(c => c.direction === 'inbound').length;
+  const uniqueContacts = new Set(filteredConversations.map(c => c.contact_phone)).size;
+  const unreadCount = filteredConversations.filter(c => c.direction === 'inbound' && !c.read_at).length;
+
+  // Get current campaign name
+  const currentCampaignName = selectedCampaign === "all" 
+    ? "Todas as campanhas" 
+    : campaigns.find(c => c.id === selectedCampaign)?.name || "Campanha";
 
   if (authLoading) {
     return (
@@ -216,12 +266,72 @@ const Results = () => {
     <div className="min-h-screen bg-background">
       <Header />
       <main className="container mx-auto px-4 py-8">
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold mb-2">Resultados das Campanhas</h1>
-          <p className="text-muted-foreground">
-            Visualize as respostas recebidas via WhatsApp
-          </p>
+        <div className="mb-8 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+          <div>
+            <h1 className="text-3xl font-bold mb-2">Resultados das Campanhas</h1>
+            <p className="text-muted-foreground">
+              Visualize as respostas recebidas via WhatsApp
+            </p>
+          </div>
+          
+          {/* Campaign Filter */}
+          <div className="flex items-center gap-2">
+            <Tag className="h-4 w-4 text-muted-foreground" />
+            <Select value={selectedCampaign} onValueChange={setSelectedCampaign}>
+              <SelectTrigger className="w-[250px]">
+                <SelectValue placeholder="Selecionar campanha" />
+              </SelectTrigger>
+              <SelectContent className="bg-popover">
+                <SelectItem value="all">Todas as campanhas</SelectItem>
+                {campaigns.map((campaign) => (
+                  <SelectItem key={campaign.id} value={campaign.id}>
+                    {campaign.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
         </div>
+
+        {/* Campaign Info Card */}
+        {selectedCampaign !== "all" && (
+          <Card className="mb-6 bg-primary/5 border-primary/20">
+            <CardContent className="p-4">
+              <div className="flex flex-wrap items-center gap-6">
+                <div className="flex items-center gap-2">
+                  <Tag className="h-5 w-5 text-primary" />
+                  <span className="font-semibold">{currentCampaignName}</span>
+                </div>
+                {(() => {
+                  const campaign = campaigns.find(c => c.id === selectedCampaign);
+                  if (!campaign) return null;
+                  return (
+                    <>
+                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                        <Users className="h-4 w-4" />
+                        <span>{campaign.contacts_count} contatos</span>
+                      </div>
+                      <div className="flex items-center gap-2 text-sm text-green-600">
+                        <Send className="h-4 w-4" />
+                        <span>{campaign.sent_count} enviadas</span>
+                      </div>
+                      {campaign.failed_count > 0 && (
+                        <div className="flex items-center gap-2 text-sm text-destructive">
+                          <XCircle className="h-4 w-4" />
+                          <span>{campaign.failed_count} falhas</span>
+                        </div>
+                      )}
+                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                        <Clock className="h-4 w-4" />
+                        <span>{format(new Date(campaign.created_at), "dd/MM/yyyy HH:mm", { locale: ptBR })}</span>
+                      </div>
+                    </>
+                  );
+                })()}
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Stats */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
@@ -262,9 +372,69 @@ const Results = () => {
 
         <Tabs defaultValue="conversations" className="space-y-4">
           <TabsList>
+            <TabsTrigger value="campaigns">Campanhas</TabsTrigger>
             <TabsTrigger value="conversations">Conversas</TabsTrigger>
             <TabsTrigger value="webhook">Configurar Webhook</TabsTrigger>
           </TabsList>
+
+          <TabsContent value="campaigns">
+            <Card>
+              <CardHeader>
+                <CardTitle>Histórico de Campanhas</CardTitle>
+              </CardHeader>
+              <CardContent>
+                {campaigns.length === 0 ? (
+                  <div className="text-center py-12">
+                    <Tag className="h-12 w-12 mx-auto mb-4 text-muted-foreground opacity-50" />
+                    <p className="text-muted-foreground">Nenhuma campanha enviada ainda</p>
+                    <p className="text-sm text-muted-foreground">Vá para Contatos e envie sua primeira campanha</p>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {campaigns.map((campaign) => (
+                      <div
+                        key={campaign.id}
+                        className={`p-4 border rounded-lg cursor-pointer transition-colors hover:bg-muted/50 ${
+                          selectedCampaign === campaign.id ? 'border-primary bg-primary/5' : ''
+                        }`}
+                        onClick={() => setSelectedCampaign(campaign.id)}
+                      >
+                        <div className="flex items-start justify-between">
+                          <div>
+                            <h3 className="font-semibold">{campaign.name}</h3>
+                            {campaign.template_name && (
+                              <p className="text-sm text-muted-foreground">
+                                Template: {campaign.template_name}
+                              </p>
+                            )}
+                          </div>
+                          <span className="text-sm text-muted-foreground">
+                            {format(new Date(campaign.created_at), "dd/MM/yyyy HH:mm", { locale: ptBR })}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-4 mt-2">
+                          <Badge variant="outline" className="flex items-center gap-1">
+                            <Users className="h-3 w-3" />
+                            {campaign.contacts_count}
+                          </Badge>
+                          <Badge variant="outline" className="flex items-center gap-1 text-green-600 border-green-600/30">
+                            <CheckCircle className="h-3 w-3" />
+                            {campaign.sent_count}
+                          </Badge>
+                          {campaign.failed_count > 0 && (
+                            <Badge variant="outline" className="flex items-center gap-1 text-destructive border-destructive/30">
+                              <XCircle className="h-3 w-3" />
+                              {campaign.failed_count}
+                            </Badge>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
 
           <TabsContent value="conversations">
             <Card className="overflow-hidden">
@@ -291,7 +461,9 @@ const Results = () => {
                       <div className="p-8 text-center">
                         <MessageSquare className="h-10 w-10 mx-auto mb-3 text-muted-foreground" />
                         <p className="text-sm text-muted-foreground">
-                          Nenhuma resposta recebida ainda
+                          {selectedCampaign === "all" 
+                            ? "Nenhuma resposta recebida ainda" 
+                            : "Nenhuma resposta nesta campanha"}
                         </p>
                       </div>
                     ) : (
@@ -439,10 +611,11 @@ const Results = () => {
                   </ol>
                 </div>
 
-                <div className="bg-yellow-500/10 border border-yellow-500/20 p-4 rounded-lg">
-                  <p className="text-sm text-yellow-600 dark:text-yellow-500">
-                    <strong>Importante:</strong> Após configurar o webhook, as respostas das suas campanhas 
-                    aparecerão automaticamente nesta página em tempo real.
+                <div className="bg-amber-500/10 border border-amber-500/20 p-4 rounded-lg">
+                  <h4 className="font-medium text-amber-600 mb-2">⚠️ Importante</h4>
+                  <p className="text-sm text-muted-foreground">
+                    Para receber mensagens de resposta, você precisa configurar o webhook no painel do Meta.
+                    As mensagens recebidas aparecerão automaticamente nesta página.
                   </p>
                 </div>
               </CardContent>
