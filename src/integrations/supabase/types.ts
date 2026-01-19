@@ -98,6 +98,50 @@ export type Database = {
         }
         Relationships: []
       }
+      whatsapp_campaigns: {
+        Row: {
+          contacts_count: number
+          created_at: string
+          failed_count: number
+          id: string
+          name: string
+          sent_count: number
+          template_id: string | null
+          template_name: string | null
+          user_id: string
+        }
+        Insert: {
+          contacts_count?: number
+          created_at?: string
+          failed_count?: number
+          id: string
+          name: string
+          sent_count?: number
+          template_id?: string | null
+          template_name?: string | null
+          user_id: string
+        }
+        Update: {
+          contacts_count?: number
+          created_at?: string
+          failed_count?: number
+          id?: string
+          name?: string
+          sent_count?: number
+          template_id?: string | null
+          template_name?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "whatsapp_campaigns_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "whatsapp_templates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       whatsapp_config: {
         Row: {
           cloudapi_access_token: string | null
