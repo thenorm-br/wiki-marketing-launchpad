@@ -1,4 +1,4 @@
-import * as XLSX from "xlsx";
+import ExcelJS from "exceljs";
 
 export type ImportedContactRow = {
   name: string;
@@ -156,16 +156,30 @@ function parseCsvText(text: string): ImportedContactRow[] {
   return mapRowsToContacts(rows);
 }
 
-function parseExcel(buffer: ArrayBuffer): ImportedContactRow[] {
-  const wb = XLSX.read(buffer, { type: "array" });
-  const sheetName = wb.SheetNames[0];
-  if (!sheetName) return [];
+async function parseExcel(buffer: ArrayBuffer): Promise<ImportedContactRow[]> {
+  const wb = new ExcelJS.Workbook();
+  await wb.xlsx.load(buffer);
+  const ws = wb.worksheets[0];
+  if (!ws) return [];
 
-  const ws = wb.Sheets[sheetName];
-  const rows = XLSX.utils.sheet_to_json<unknown[]>(ws, { header: 1, defval: "" });
+  const rows: string[][] = [];
+  ws.eachRow({ includeEmpty: false }, (row) => {
+    const values = row.values as unknown[];
+    // ExcelJS row.values is 1-indexed; drop the leading undefined.
+    const cells = (Array.isArray(values) ? values.slice(1) : []).map((v) => {
+      if (v == null) return "";
+      if (typeof v === "object" && v !== null && "text" in (v as Record<string, unknown>)) {
+        return String((v as { text: unknown }).text ?? "");
+      }
+      if (typeof v === "object" && v !== null && "result" in (v as Record<string, unknown>)) {
+        return String((v as { result: unknown }).result ?? "");
+      }
+      return String(v);
+    });
+    rows.push(cells);
+  });
 
-  // sheet_to_json(header:1) devolve unknown[][], mas o tipo genérico é fraco.
-  return mapRowsToContacts(rows as unknown as string[][]);
+  return mapRowsToContacts(rows);
 }
 
 export async function parseContactsFile(file: File): Promise<ImportedContactRow[]> {
@@ -176,7 +190,7 @@ export async function parseContactsFile(file: File): Promise<ImportedContactRow[
   }
 
   if (ext === "xlsx" || ext === "xls") {
-    return parseExcel(await file.arrayBuffer());
+    return await parseExcel(await file.arrayBuffer());
   }
 
   // Alguns CSVs vêm com MIME genérico.
