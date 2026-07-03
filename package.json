@@ -8,7 +8,8 @@
     "build": "vite build",
     "build:dev": "vite build --mode development",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "publish": "powershell -ExecutionPolicy Bypass -File ./scripts/publish.ps1"
   },
   "dependencies": {
     "@radix-ui/react-avatar": "^1.1.10",

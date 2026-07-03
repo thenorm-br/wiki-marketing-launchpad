@@ -66,6 +66,23 @@ Configuracao esperada no Coolify:
 
 Como o frontend usa Vite, as variaveis `VITE_*` precisam existir antes do build da imagem. Se mudar uma delas no Coolify, faca um novo deploy/rebuild.
 
+### Publicar GitHub + Coolify
+
+Use o script abaixo para commitar, enviar para o GitHub e disparar deploy no Coolify:
+
+```powershell
+$env:COOLIFY_TOKEN="seu-token-do-coolify"
+npm run publish -- -Message "Descricao da alteracao"
+```
+
+Padroes do script:
+
+- Coolify API: `https://sistemas.faesde.com.br/api/v1`
+- App UUID: `rf5qjrkb1mfg4jp59twsqbyk`
+- Repositorio: usa o checkout Git atual; nesta pasta local, se o Git da raiz nao estiver valido, sincroniza para `_versions/*/03-publish-clean`.
+
+Nao commite tokens. Passe `COOLIFY_TOKEN` por variavel de ambiente ou pelo parametro `-CoolifyToken`.
+
 ## Desenvolvimento
 
 ```bash
@@ -86,6 +103,8 @@ O build final fica em `dist/`.
 ## Supabase
 
 As migrations em `supabase/migrations` descrevem as tabelas e politicas de acesso do banco. As Edge Functions em `supabase/functions` concentram operacoes que precisam rodar no backend, como salvar configuracoes sensiveis, testar conexao com WhatsApp e enviar mensagens.
+
+A migration `supabase/migrations/20260703222000_confirm_test_account_email.sql` confirma o e-mail do usuario de teste `teste@gmail.com`. Coolify nao executa migrations do Supabase; aplique pelo SQL Editor do Supabase ou pelo Supabase CLI.
 
 Para publicar functions com o Supabase CLI:
 
