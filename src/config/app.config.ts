@@ -127,7 +127,7 @@ export const UI_CONFIG = {
   logoUrl: '/logo.png',
   
   // Favicon
-  faviconUrl: '/favicon.ico',
+  faviconUrl: '/favicon.svg',
 };
 
 // ====================================
