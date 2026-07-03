@@ -11,6 +11,8 @@ interface Profile {
   user_id: string;
   full_name: string | null;
   email: string | null;
+  email_confirmed: boolean;
+  email_confirmed_at: string | null;
 }
 
 interface Subscription {
@@ -50,7 +52,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
     const { data: profileRows } = await supabaseWiki
       .from('profiles')
-      .select('id, user_id, full_name, email')
+      .select('id, user_id, full_name, email, email_confirmed, email_confirmed_at')
       .eq('user_id', userId)
       .limit(1);
 
@@ -144,7 +146,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const isSubscribed = subscription?.status === 'active' || subscription?.status === 'trial';
-  const isEmailConfirmed = !!user?.email_confirmed_at;
+  const isEmailConfirmed = !!user?.email_confirmed_at || !!profile?.email_confirmed;
 
   return (
     <AuthContext.Provider value={{ 
