@@ -19,6 +19,22 @@ const Login = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [isSignUp, setIsSignUp] = useState(false);
 
+  const getAuthErrorMessage = (message: string) => {
+    if (message === "Invalid login credentials") {
+      return "E-mail ou senha incorretos";
+    }
+
+    if (message === "User already registered") {
+      return "Este e-mail ja esta cadastrado";
+    }
+
+    if (message.includes("Password is known to be weak") || message.includes("weak_password")) {
+      return "Esta senha e muito fraca. Use uma senha mais forte ou ajuste a politica de senha no Supabase.";
+    }
+
+    return message;
+  };
+
   // Redirect if already logged in
   useEffect(() => {
     if (user && !loading) {
@@ -64,9 +80,7 @@ const Login = () => {
         if (error) {
           toast({
             title: "Erro ao criar conta",
-            description: error.message === "User already registered" 
-              ? "Este e-mail já está cadastrado" 
-              : error.message,
+            description: getAuthErrorMessage(error.message),
             variant: "destructive",
           });
         } else {
@@ -80,9 +94,7 @@ const Login = () => {
         if (error) {
           toast({
             title: "Erro ao entrar",
-            description: error.message === "Invalid login credentials"
-              ? "E-mail ou senha incorretos"
-              : error.message,
+            description: getAuthErrorMessage(error.message),
             variant: "destructive",
           });
         } else {
