@@ -6,8 +6,8 @@
  * Este arquivo centraliza todas as configurações customizáveis do app.
  * Edite os valores abaixo conforme necessário.
  * 
- * NOTA: As variáveis do Supabase (VITE_SUPABASE_URL, VITE_SUPABASE_PUBLISHABLE_KEY)
- * são gerenciadas automaticamente pelo Lovable Cloud e estão no arquivo .env
+ * NOTA: As variaveis do Supabase (VITE_SUPABASE_URL, VITE_SUPABASE_PUBLISHABLE_KEY)
+ * ficam configuradas no arquivo .env do ambiente.
  */
 
 // ====================================

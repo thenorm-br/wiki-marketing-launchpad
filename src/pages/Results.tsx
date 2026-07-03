@@ -72,6 +72,18 @@ interface MessageQueueItem {
   template_body: string | null;
 }
 
+const getSupabaseProjectId = () => {
+  const configuredProjectId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
+  if (configuredProjectId) return configuredProjectId;
+
+  try {
+    const hostname = new URL(import.meta.env.VITE_SUPABASE_URL).hostname;
+    return hostname.endsWith(".supabase.co") ? hostname.split(".")[0] : "";
+  } catch {
+    return "";
+  }
+};
+
 const Results = () => {
   const { user, loading: authLoading } = useAuth();
   const [conversations, setConversations] = useState<Conversation[]>([]);
@@ -89,8 +101,10 @@ const Results = () => {
       setupRealtime();
       
       // Set webhook URL
-      const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID || 'fwtgjrdwdhhrbxmlqbnn';
-      setWebhookUrl(`https://${projectId}.supabase.co/functions/v1/whatsapp-webhook`);
+      const projectId = getSupabaseProjectId();
+      if (projectId) {
+        setWebhookUrl(`https://${projectId}.supabase.co/functions/v1/whatsapp-webhook`);
+      }
     }
   }, [user]);
 
@@ -128,11 +142,12 @@ const Results = () => {
 
       if (queueError) throw queueError;
       setMessageQueue(queueData || []);
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : "Erro desconhecido";
       console.error('Error fetching data:', error);
       toast({
         title: "Erro ao carregar dados",
-        description: error.message,
+        description: message,
         variant: "destructive"
       });
     } finally {

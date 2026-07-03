@@ -5,6 +5,13 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
+type WhatsAppContact = {
+  wa_id?: string
+  profile?: {
+    name?: string
+  }
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders })
@@ -99,7 +106,7 @@ Deno.serve(async (req) => {
         const messageType = message.type || 'text'
 
         // Get contact name
-        const contact = contacts.find((c: any) => c.wa_id === contactPhone)
+        const contact = contacts.find((c: WhatsAppContact) => c.wa_id === contactPhone)
         const contactName = contact?.profile?.name || null
 
         // Extract message content based on type

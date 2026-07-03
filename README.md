@@ -1,73 +1,100 @@
-# Welcome to your Lovable project
+# WikiMarketing
 
-## Project info
+WikiMarketing e uma plataforma web para gestao de campanhas de relacionamento com leads. O app permite importar contatos, selecionar acoes de comunicacao, configurar provedores de WhatsApp e acompanhar conversas/resultados de campanhas.
 
-**URL**: https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID
+O projeto combina um frontend React com Supabase para autenticacao, banco de dados, storage e Edge Functions.
 
-## How can I edit this code?
+## Principais recursos
 
-There are several ways of editing your application.
+- Landing page institucional da WikiMarketing.
+- Login, cadastro e controle de acesso por perfil/assinatura.
+- Upload de contatos via CSV, XLSX ou XLS.
+- Envio e orquestracao de campanhas com WhatsApp, email, ligacao e SMS.
+- Configuracao de provedores WhatsApp Evolution API ou Cloud API da Meta.
+- Criacao, envio e sincronizacao de templates do WhatsApp.
+- Tela de resultados com campanhas, fila de mensagens e conversas.
 
-**Use Lovable**
+## Stack
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and start prompting.
+- React 18
+- TypeScript
+- Vite
+- Tailwind CSS
+- shadcn/Radix UI
+- Supabase Auth, Database, Storage e Edge Functions
+- XLSX para importacao de planilhas
 
-Changes made via Lovable will be committed automatically to this repo.
+## Estrutura
 
-**Use your preferred IDE**
+```text
+src/
+  components/        Componentes visuais e layout
+  contexts/          Estado global de autenticacao
+  integrations/      Cliente Supabase tipado
+  lib/               Helpers de importacao, schema wiki e utilitarios
+  pages/             Rotas principais da aplicacao
+  config/            Configuracoes do produto
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
+supabase/
+  functions/         Edge Functions usadas pelo app
+  migrations/        Historico SQL do banco
+  config.toml        Configuracao local das functions
+```
 
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
+## Configuracao
 
-Follow these steps:
+Em desenvolvimento local, crie um arquivo `.env` com as variaveis publicas do Supabase:
 
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
+```env
+VITE_SUPABASE_URL="https://seu-projeto.supabase.co"
+VITE_SUPABASE_PUBLISHABLE_KEY="sua-chave-anon"
+VITE_SUPABASE_PROJECT_ID="seu-project-ref"
+```
 
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
+As variaveis acima sao publicas e usadas pelo frontend. Chaves administrativas, como `SUPABASE_SERVICE_ROLE_KEY`, nao devem ficar no frontend.
 
-# Step 3: Install the necessary dependencies.
-npm i
+## Deploy no Coolify
 
-# Step 4: Start the development server with auto-reloading and an instant preview.
+Este projeto foi preparado para rodar no Coolify usando o `Dockerfile` da raiz.
+
+Configuracao esperada no Coolify:
+
+- Build Pack: `Dockerfile`
+- Dockerfile: `Dockerfile`
+- Porta exposta: `3000`
+- Variaveis de build: `VITE_SUPABASE_URL`, `VITE_SUPABASE_PUBLISHABLE_KEY`, `VITE_SUPABASE_PROJECT_ID`
+
+Como o frontend usa Vite, as variaveis `VITE_*` precisam existir antes do build da imagem. Se mudar uma delas no Coolify, faca um novo deploy/rebuild.
+
+## Desenvolvimento
+
+```bash
+npm install
 npm run dev
 ```
 
-**Edit a file directly in GitHub**
+O servidor local sobe em `http://localhost:8080`.
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+## Build
 
-**Use GitHub Codespaces**
+```bash
+npm run build
+```
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+O build final fica em `dist/`.
 
-## What technologies are used for this project?
+## Supabase
 
-This project is built with:
+As migrations em `supabase/migrations` descrevem as tabelas e politicas de acesso do banco. As Edge Functions em `supabase/functions` concentram operacoes que precisam rodar no backend, como salvar configuracoes sensiveis, testar conexao com WhatsApp e enviar mensagens.
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
+Para publicar functions com o Supabase CLI:
 
-## How can I deploy this project?
+```bash
+supabase login
+supabase link --project-ref seu-project-ref
+supabase functions deploy
+```
 
-Simply open [Lovable](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and click on Share -> Publish.
+## Deploy
 
-## Can I connect a custom domain to my Lovable project?
-
-Yes, you can!
-
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
-
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/features/custom-domain#custom-domain)
+O projeto ja inclui `Dockerfile` e `nginx.conf` para servir o build estatico em Nginx. O dominio publicado atualmente pode apontar para qualquer infraestrutura que sirva a pasta `dist/` gerada pelo Vite.

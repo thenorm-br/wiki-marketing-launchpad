@@ -59,16 +59,6 @@
     --shadow-lg: 0 16px 48px -16px hsl(0 0% 0% / 0.5);
     --shadow-primary: 0 8px 32px -8px hsl(300 80% 65% / 0.4);
     --shadow-accent: 0 8px 32px -8px hsl(200 90% 55% / 0.4);
-
-    /* Sidebar */
-    --sidebar-background: 230 35% 10%;
-    --sidebar-foreground: 220 20% 90%;
-    --sidebar-primary: 300 80% 65%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 230 25% 18%;
-    --sidebar-accent-foreground: 220 20% 95%;
-    --sidebar-border: 230 25% 20%;
-    --sidebar-ring: 300 80% 65%;
   }
 
   .dark {
@@ -99,15 +89,6 @@
     --border: 230 30% 15%;
     --input: 230 30% 15%;
     --ring: 300 85% 70%;
-
-    --sidebar-background: 230 40% 5%;
-    --sidebar-foreground: 0 0% 90%;
-    --sidebar-primary: 300 85% 70%;
-    --sidebar-primary-foreground: 230 40% 6%;
-    --sidebar-accent: 230 30% 12%;
-    --sidebar-accent-foreground: 0 0% 98%;
-    --sidebar-border: 230 30% 15%;
-    --sidebar-ring: 300 85% 70%;
   }
 }
 
